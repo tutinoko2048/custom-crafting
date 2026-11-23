@@ -1,0 +1,43 @@
+{
+  "format_version": "1.26.60",
+  "minecraft:block": {
+    "description": {
+      "identifier": "craft:workbench_black",
+      "menu_category": {
+        "category": "items",
+        "group": "craft:itemGroup.name.workbench"
+      }
+    },
+    "components": {
+      "craft:workbench": {},
+      "minecraft:geometry": "minecraft:geometry.full_block",
+      "minecraft:material_instances": {
+        "*": {
+          "texture": "craft:workbench_black_side"
+        },
+        "north": {
+          "texture": "craft:workbench_black_front"
+        },
+        "south": {
+          "texture": "craft:workbench_black_front"
+        },
+        "up": {
+          "texture": "craft:workbench_black_top"
+        },
+        "down": {
+          "texture": "craft:workbench_bottom"
+        }
+      },
+      "minecraft:destructible_by_mining": {
+        "seconds_to_destroy": 2.5
+      },
+      "minecraft:destructible_by_explosion": {
+        "explosion_resistance": 2.5
+      },
+      "minecraft:flammable": {
+        "catch_chance_modifier": 5,
+        "destroy_chance_modifier": 20
+      }
+    }
+  }
+}

@@ -1,0 +1,36 @@
+{
+  "format_version": "1.26.60",
+  "minecraft:crafting_items_catalog": {
+    "categories": [
+      {
+        "category_name": "items",
+        "groups": [
+          {
+            "group_identifier": {
+              "icon": "craft:workbench_white",
+              "name": "craft:itemGroup.name.workbench"
+            },
+            "items": [
+              "craft:workbench_white",
+              "craft:workbench_orange",
+              "craft:workbench_magenta",
+              "craft:workbench_light_blue",
+              "craft:workbench_yellow",
+              "craft:workbench_lime",
+              "craft:workbench_pink",
+              "craft:workbench_gray",
+              "craft:workbench_light_gray",
+              "craft:workbench_cyan",
+              "craft:workbench_purple",
+              "craft:workbench_blue",
+              "craft:workbench_brown",
+              "craft:workbench_green",
+              "craft:workbench_red",
+              "craft:workbench_black"
+            ]
+          }
+        ]
+      }
+    ]
+  }
+}

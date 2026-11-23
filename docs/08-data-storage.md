@@ -6,14 +6,14 @@
 | ------------------------------ | ----------------------------------------------------------------------------------- |
 | ステーションの識別             | ブロックの種類（色）                                                                |
 | 色ごとの設定・レシピのメタ情報 | ワールドのダイナミックプロパティ（色をキーにした JSON。アイテムのデータは含めない） |
-| 材料・完成品のアイテム         | ストラクチャー `cw:r_<recipeId>`（保管用エンティティのインベントリ）                |
+| 材料・完成品のアイテム         | ストラクチャー `craft:r_<recipeId>`（保管用エンティティのインベントリ）             |
 | 作業中のグリッドの中身         | プレイヤーごとに退避（方式はアイテムと同じ）                                        |
 
 ## 保存（エディタで保存したとき）
 
-1. 管理者の近く（チャンクが読み込まれている場所）に、透明な保管用エンティティ `cw:recipe_store`（`minecraft:inventory` 持ち）を召喚する
+1. 管理者の近く（チャンクが読み込まれている場所）に、透明な保管用エンティティ `craft:recipe_store`（`minecraft:inventory` 持ち）を召喚する
 2. 材料と完成品を `setItem` で入れる
-3. `structureManager.createFromWorld("cw:r_<recipeId>", dim, pos, pos, { includeBlocks: false, includeEntities: true, saveMode: World })` で保存する
+3. `structureManager.createFromWorld("craft:r_<recipeId>", dim, pos, pos, { includeBlocks: false, includeEntities: true, saveMode: World })` で保存する
 4. エンティティを `remove()` で消す（kill にしない＝中身をドロップさせない）
 
 ## 読み込み（ワールド起動後、最初のプレイヤーが参加したとき）

@@ -18,9 +18,18 @@ pnpm workspace の monorepo。ツールチェーンは [Vite+](https://viteplus.
 - `pnpm i`
 - `vp build` ではなく `pnpm build`（= `vp run -r build`）で全パッケージをビルド（`behavior/scripts/` に出力。キャッシュあり）
 - `pnpm watch` で監視ビルド
+- `pnpm gen` で16色ぶんのブロック定義・言語ファイルの色ごとの行を作り直す（`tools/gen-assets.ts`。生成物はコミットする）
 - `vp check` で format・lint・型チェック（`vp check --fix` で自動修正）
 - コミット時に pre-commit フックで `vp staged`（ステージしたファイルに `vp check --fix`）が走る
 - 個別に動かすときは `vp run @custom-crafting/behavior#build` のように指定する
+
+## 使い方（MVP）
+
+Minecraft Preview 26.70 以降で、ワールドの「ベータ API」実験トグルを ON にして使う。
+
+1. `/craft:admin` で管理画面を開き、色を選んで「新しいレシピを登録」を押す
+2. 開いた画面の左の3×3に材料、右のスロットに完成品を実物で置いて閉じると保存される
+3. その色の作業台ブロック（クリエイティブの「アイテム」タブ）を置いて右クリックするか、`/craft:open <color> [target]` で開く
 
 ## その他
 

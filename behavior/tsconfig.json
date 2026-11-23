@@ -4,6 +4,8 @@
     "strict": true,
     "noLib": true,
     "types": ["@bedrock-apis/env-types"],
+    "module": "preserve",
+    "moduleResolution": "bundler",
     "noEmit": true
   }
 }

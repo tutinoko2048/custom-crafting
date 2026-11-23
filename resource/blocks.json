@@ -1,0 +1,51 @@
+{
+  "format_version": "1.21.40",
+  "craft:workbench_white": {
+    "sound": "wood"
+  },
+  "craft:workbench_orange": {
+    "sound": "wood"
+  },
+  "craft:workbench_magenta": {
+    "sound": "wood"
+  },
+  "craft:workbench_light_blue": {
+    "sound": "wood"
+  },
+  "craft:workbench_yellow": {
+    "sound": "wood"
+  },
+  "craft:workbench_lime": {
+    "sound": "wood"
+  },
+  "craft:workbench_pink": {
+    "sound": "wood"
+  },
+  "craft:workbench_gray": {
+    "sound": "wood"
+  },
+  "craft:workbench_light_gray": {
+    "sound": "wood"
+  },
+  "craft:workbench_cyan": {
+    "sound": "wood"
+  },
+  "craft:workbench_purple": {
+    "sound": "wood"
+  },
+  "craft:workbench_blue": {
+    "sound": "wood"
+  },
+  "craft:workbench_brown": {
+    "sound": "wood"
+  },
+  "craft:workbench_green": {
+    "sound": "wood"
+  },
+  "craft:workbench_red": {
+    "sound": "wood"
+  },
+  "craft:workbench_black": {
+    "sound": "wood"
+  }
+}

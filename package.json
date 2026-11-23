@@ -7,9 +7,10 @@
     "build": "vp run -r build",
     "watch": "vp run -r --parallel watch",
     "ready": "vp check && vp run -r build",
-    "prepare": "vp config && node tools/link-skills.ts",
+    "prepare": "vp config && vpx tools/link-skills.ts",
     "test": "vp test",
-    "link-skills": "node tools/link-skills.ts"
+    "link-skills": "vpx tools/link-skills.ts",
+    "gen": "vpx tools/gen-assets.ts && vp fmt behavior resource"
   },
   "devDependencies": {
     "@types/node": "catalog:",

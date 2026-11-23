@@ -3,6 +3,10 @@
   "private": true,
   "files": [
     "./manifest.json",
+    "./blocks",
+    "./entities",
+    "./item_catalog",
+    "./items",
     "./scripts"
   ],
   "type": "module",

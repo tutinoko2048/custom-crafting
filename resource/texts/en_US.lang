@@ -1,0 +1,91 @@
+## Custom Crafting add-on
+
+craft:itemGroup.name.workbench=Custom Workbenches
+craft.ui.blank=§r
+craft.editor.title=Edit Recipe (close to save)
+
+craft.cmd.open.description=Opens the custom workbench of the given color
+craft.cmd.admin.description=Opens the custom workbench admin screen
+craft.cmd.unknown_color=Unknown color
+craft.cmd.no_target=No target player
+craft.cmd.player_only=Only players can run this command
+
+craft.msg.unconfigured=§7Nothing can be crafted here
+craft.msg.unconfigured.admin=§eThis workbench is not set up yet (use /craft:admin)
+craft.msg.open_failed=§cCould not open the workbench. Close other screens and try again
+craft.msg.saved=§aSaved recipe "%s"
+craft.msg.not_saved=§eNot saved: place both ingredients and a result
+craft.msg.save_failed=§cFailed to save the recipe
+craft.msg.stash_returned=§aReturned the items left in your last workbench
+
+craft.admin.title=Custom Workbench Admin
+craft.admin.colors.body=Choose a workbench color to set up. The number in ( ) is its recipe count.
+craft.admin.back=Back
+craft.admin.cancel=Cancel
+craft.admin.station.name=Display name
+craft.admin.station.save=Save display name
+craft.admin.recipes=Recipes
+craft.admin.recipes.add=+ Register a new recipe
+craft.admin.recipe.title=Recipe
+craft.admin.recipe.name=Recipe name
+craft.admin.recipe.match=Ingredient matching
+craft.admin.recipe.match.description=How strictly ingredients are compared. When several recipes match, the stricter one wins
+craft.admin.recipe.match.id=Item type only
+craft.admin.recipe.match.name=Type + name
+craft.admin.recipe.match.lore=Type + name + lore
+craft.admin.recipe.match.exact=Exact (including enchantments)
+craft.admin.recipe.save=Save and go back
+craft.admin.recipe.edit=Edit ingredients and result
+craft.admin.recipe.delete=Delete this recipe
+craft.admin.recipe.delete.confirm=Delete recipe "%s"? This cannot be undone.
+
+## generated:start (tools/gen-assets.ts)
+tile.craft:workbench_white.name=White Custom Workbench
+craft.station.table_white=White Custom Workbench
+craft.color.white=White
+tile.craft:workbench_orange.name=Orange Custom Workbench
+craft.station.table_orange=Orange Custom Workbench
+craft.color.orange=Orange
+tile.craft:workbench_magenta.name=Magenta Custom Workbench
+craft.station.table_magenta=Magenta Custom Workbench
+craft.color.magenta=Magenta
+tile.craft:workbench_light_blue.name=Light Blue Custom Workbench
+craft.station.table_light_blue=Light Blue Custom Workbench
+craft.color.light_blue=Light Blue
+tile.craft:workbench_yellow.name=Yellow Custom Workbench
+craft.station.table_yellow=Yellow Custom Workbench
+craft.color.yellow=Yellow
+tile.craft:workbench_lime.name=Lime Custom Workbench
+craft.station.table_lime=Lime Custom Workbench
+craft.color.lime=Lime
+tile.craft:workbench_pink.name=Pink Custom Workbench
+craft.station.table_pink=Pink Custom Workbench
+craft.color.pink=Pink
+tile.craft:workbench_gray.name=Gray Custom Workbench
+craft.station.table_gray=Gray Custom Workbench
+craft.color.gray=Gray
+tile.craft:workbench_light_gray.name=Light Gray Custom Workbench
+craft.station.table_light_gray=Light Gray Custom Workbench
+craft.color.light_gray=Light Gray
+tile.craft:workbench_cyan.name=Cyan Custom Workbench
+craft.station.table_cyan=Cyan Custom Workbench
+craft.color.cyan=Cyan
+tile.craft:workbench_purple.name=Purple Custom Workbench
+craft.station.table_purple=Purple Custom Workbench
+craft.color.purple=Purple
+tile.craft:workbench_blue.name=Blue Custom Workbench
+craft.station.table_blue=Blue Custom Workbench
+craft.color.blue=Blue
+tile.craft:workbench_brown.name=Brown Custom Workbench
+craft.station.table_brown=Brown Custom Workbench
+craft.color.brown=Brown
+tile.craft:workbench_green.name=Green Custom Workbench
+craft.station.table_green=Green Custom Workbench
+craft.color.green=Green
+tile.craft:workbench_red.name=Red Custom Workbench
+craft.station.table_red=Red Custom Workbench
+craft.color.red=Red
+tile.craft:workbench_black.name=Black Custom Workbench
+craft.station.table_black=Black Custom Workbench
+craft.color.black=Black
+## generated:end

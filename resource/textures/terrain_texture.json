@@ -1,0 +1,153 @@
+{
+  "resource_pack_name": "custom-crafting",
+  "texture_name": "atlas.terrain",
+  "texture_data": {
+    "craft:workbench_bottom": {
+      "textures": "textures/craft/blocks/workbench_bottom"
+    },
+    "craft:workbench_white_top": {
+      "textures": "textures/craft/blocks/workbench_white_top"
+    },
+    "craft:workbench_white_side": {
+      "textures": "textures/craft/blocks/workbench_white_side"
+    },
+    "craft:workbench_white_front": {
+      "textures": "textures/craft/blocks/workbench_white_front"
+    },
+    "craft:workbench_orange_top": {
+      "textures": "textures/craft/blocks/workbench_orange_top"
+    },
+    "craft:workbench_orange_side": {
+      "textures": "textures/craft/blocks/workbench_orange_side"
+    },
+    "craft:workbench_orange_front": {
+      "textures": "textures/craft/blocks/workbench_orange_front"
+    },
+    "craft:workbench_magenta_top": {
+      "textures": "textures/craft/blocks/workbench_magenta_top"
+    },
+    "craft:workbench_magenta_side": {
+      "textures": "textures/craft/blocks/workbench_magenta_side"
+    },
+    "craft:workbench_magenta_front": {
+      "textures": "textures/craft/blocks/workbench_magenta_front"
+    },
+    "craft:workbench_light_blue_top": {
+      "textures": "textures/craft/blocks/workbench_light_blue_top"
+    },
+    "craft:workbench_light_blue_side": {
+      "textures": "textures/craft/blocks/workbench_light_blue_side"
+    },
+    "craft:workbench_light_blue_front": {
+      "textures": "textures/craft/blocks/workbench_light_blue_front"
+    },
+    "craft:workbench_yellow_top": {
+      "textures": "textures/craft/blocks/workbench_yellow_top"
+    },
+    "craft:workbench_yellow_side": {
+      "textures": "textures/craft/blocks/workbench_yellow_side"
+    },
+    "craft:workbench_yellow_front": {
+      "textures": "textures/craft/blocks/workbench_yellow_front"
+    },
+    "craft:workbench_lime_top": {
+      "textures": "textures/craft/blocks/workbench_lime_top"
+    },
+    "craft:workbench_lime_side": {
+      "textures": "textures/craft/blocks/workbench_lime_side"
+    },
+    "craft:workbench_lime_front": {
+      "textures": "textures/craft/blocks/workbench_lime_front"
+    },
+    "craft:workbench_pink_top": {
+      "textures": "textures/craft/blocks/workbench_pink_top"
+    },
+    "craft:workbench_pink_side": {
+      "textures": "textures/craft/blocks/workbench_pink_side"
+    },
+    "craft:workbench_pink_front": {
+      "textures": "textures/craft/blocks/workbench_pink_front"
+    },
+    "craft:workbench_gray_top": {
+      "textures": "textures/craft/blocks/workbench_gray_top"
+    },
+    "craft:workbench_gray_side": {
+      "textures": "textures/craft/blocks/workbench_gray_side"
+    },
+    "craft:workbench_gray_front": {
+      "textures": "textures/craft/blocks/workbench_gray_front"
+    },
+    "craft:workbench_light_gray_top": {
+      "textures": "textures/craft/blocks/workbench_light_gray_top"
+    },
+    "craft:workbench_light_gray_side": {
+      "textures": "textures/craft/blocks/workbench_light_gray_side"
+    },
+    "craft:workbench_light_gray_front": {
+      "textures": "textures/craft/blocks/workbench_light_gray_front"
+    },
+    "craft:workbench_cyan_top": {
+      "textures": "textures/craft/blocks/workbench_cyan_top"
+    },
+    "craft:workbench_cyan_side": {
+      "textures": "textures/craft/blocks/workbench_cyan_side"
+    },
+    "craft:workbench_cyan_front": {
+      "textures": "textures/craft/blocks/workbench_cyan_front"
+    },
+    "craft:workbench_purple_top": {
+      "textures": "textures/craft/blocks/workbench_purple_top"
+    },
+    "craft:workbench_purple_side": {
+      "textures": "textures/craft/blocks/workbench_purple_side"
+    },
+    "craft:workbench_purple_front": {
+      "textures": "textures/craft/blocks/workbench_purple_front"
+    },
+    "craft:workbench_blue_top": {
+      "textures": "textures/craft/blocks/workbench_blue_top"
+    },
+    "craft:workbench_blue_side": {
+      "textures": "textures/craft/blocks/workbench_blue_side"
+    },
+    "craft:workbench_blue_front": {
+      "textures": "textures/craft/blocks/workbench_blue_front"
+    },
+    "craft:workbench_brown_top": {
+      "textures": "textures/craft/blocks/workbench_brown_top"
+    },
+    "craft:workbench_brown_side": {
+      "textures": "textures/craft/blocks/workbench_brown_side"
+    },
+    "craft:workbench_brown_front": {
+      "textures": "textures/craft/blocks/workbench_brown_front"
+    },
+    "craft:workbench_green_top": {
+      "textures": "textures/craft/blocks/workbench_green_top"
+    },
+    "craft:workbench_green_side": {
+      "textures": "textures/craft/blocks/workbench_green_side"
+    },
+    "craft:workbench_green_front": {
+      "textures": "textures/craft/blocks/workbench_green_front"
+    },
+    "craft:workbench_red_top": {
+      "textures": "textures/craft/blocks/workbench_red_top"
+    },
+    "craft:workbench_red_side": {
+      "textures": "textures/craft/blocks/workbench_red_side"
+    },
+    "craft:workbench_red_front": {
+      "textures": "textures/craft/blocks/workbench_red_front"
+    },
+    "craft:workbench_black_top": {
+      "textures": "textures/craft/blocks/workbench_black_top"
+    },
+    "craft:workbench_black_side": {
+      "textures": "textures/craft/blocks/workbench_black_side"
+    },
+    "craft:workbench_black_front": {
+      "textures": "textures/craft/blocks/workbench_black_front"
+    }
+  }
+}

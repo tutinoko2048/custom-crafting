@@ -1,0 +1,21 @@
+{
+  "format_version": "1.21.50",
+  "minecraft:entity": {
+    "description": {
+      "identifier": "craft:recipe_store",
+      "is_summonable": true,
+      "is_spawnable": false
+    },
+    "components": {
+      "minecraft:inventory": {
+        "container_type": "inventory",
+        "inventory_size": 27,
+        "private": true
+      },
+      "minecraft:physics": { "has_gravity": false, "has_collision": false },
+      "minecraft:collision_box": { "width": 0.0001, "height": 0.0001 },
+      "minecraft:pushable": { "is_pushable": false, "is_pushable_by_piston": false },
+      "minecraft:damage_sensor": { "triggers": { "deals_damage": "no" } }
+    }
+  }
+}

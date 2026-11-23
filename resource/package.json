@@ -3,7 +3,12 @@
   "private": true,
   "files": [
     "./manifest.json",
-    "./texts"
+    "./blocks.json",
+    "./entity",
+    "./models",
+    "./render_controllers",
+    "./texts",
+    "./textures"
   ],
   "type": "module"
 }

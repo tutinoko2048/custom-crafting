@@ -21,7 +21,7 @@
 
 ```mermaid
 flowchart LR
-    admin["コマンド<br/><b>/cw:admin</b>"] --> colors["CustomForm<br/><b>色一覧</b>"]
+    admin["コマンド<br/><b>/craft:admin</b>"] --> colors["CustomForm<br/><b>色一覧</b>"]
     colors --> recipes["CustomForm<br/><b>レシピ一覧</b>"]
     recipes --> detail["CustomForm<br/><b>レシピ詳細</b>"]
     recipes -- 材料を編集 --> editor["VirtualContainer<br/><b>実物エディタ</b>"]
@@ -30,4 +30,4 @@ flowchart LR
     style wait stroke-width:2px
 ```
 
-フォームとエディタは同時に表示できないため、`virtualContainerClose` を受けてから次のフォームを `show()` し、結果が `UserBusy` なら数 tick 後に再試行する。`/cw:admin <色>` で始めた場合はレシピ一覧から開く。
+フォームとエディタは同時に表示できないため、`virtualContainerClose` を受けてから次のフォームを `show()` し、結果が `UserBusy` なら数 tick 後に再試行する。`/craft:admin <色>` で始めた場合はレシピ一覧から開く。
