@@ -1,0 +1,17 @@
+{
+  "name": "@custom-crafting/behavior",
+  "private": true,
+  "files": [
+    "./manifest.json",
+    "./scripts"
+  ],
+  "type": "module",
+  "scripts": {
+    "watch": "vp pack --watch"
+  },
+  "devDependencies": {
+    "@bedrock-apis/env-types": "catalog:",
+    "@minecraft/server": "catalog:",
+    "@minecraft/server-ui": "catalog:"
+  }
+}

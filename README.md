@@ -1,0 +1,39 @@
+# custom-crafting
+
+VirtualContainer ベースのカスタム作業台アドオン。仕様は [docs/](docs/README.md) を参照。
+
+## 構成
+
+pnpm workspace の monorepo。ツールチェーンは [Vite+](https://viteplus.dev/)（`vp`）。
+
+| パス        | 内容                                                              |
+| ----------- | ----------------------------------------------------------------- |
+| `behavior/` | ビヘイビアパック（Script API / TypeScript、`vp pack` でバンドル） |
+| `resource/` | リソースパック                                                    |
+| `docs/`     | 仕様書                                                            |
+
+## 環境構築
+
+- パッケージマネージャーには [pnpm](https://pnpm.io/) を使う
+- `pnpm i`
+- `vp build` ではなく `pnpm build`（= `vp run -r build`）で全パッケージをビルド（`behavior/scripts/` に出力。キャッシュあり）
+- `pnpm watch` で監視ビルド
+- `vp check` で format・lint・型チェック（`vp check --fix` で自動修正）
+- コミット時に pre-commit フックで `vp staged`（ステージしたファイルに `vp check --fix`）が走る
+- 個別に動かすときは `vp run @custom-crafting/behavior#build` のように指定する
+
+## その他
+
+- 依存のバージョンは `pnpm-workspace.yaml` の `catalog` でまとめて管理する
+- mcpack に含めるファイルは各パッケージの `package.json` の `files` で定義する
+- `mklink.bat` を実行すると、`behavior/` と `resource/` を `development_behavior_packs` / `development_resource_packs` に `<フォルダ名>_BP` / `_RP` としてリンクする
+- Script API の型定義には [`@bedrock-apis/env-types`](https://github.com/bedrock-apis/env-types) を使う
+
+## CI / リリース
+
+- push と PR で `vp check`（format・lint・型）と `vp test` を実行する（`.github/workflows/ci.yml`）
+- バージョンの SSOT は root の `package.json` の `version`。manifest.json のバージョンとパック名はリリース時に `tools/sync-version.ts`で書き換える
+- リリース手順：
+  1. root の `package.json` の `version` を上げてコミットする
+  2. `v<version>` のタグ（例：`v0.2.0`）を push する
+  3. Actions がタグとバージョンの一致を確認してからビルドし、BP / RP 単体の mcpack と mcaddon を添付した**下書き**のリリースを作る。内容を確認して公開する

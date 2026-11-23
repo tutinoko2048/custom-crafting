@@ -1,0 +1,18 @@
+{
+  "format_version": 3,
+  "header": {
+    "name": "[RP] CustomCrafting",
+    "description": "",
+    "uuid": "e8e31aa6-788c-47d6-aeb8-5cf8440b5889",
+    "version": "0.1.0",
+    "min_engine_version": "1.26.0"
+  },
+  "modules": [
+    {
+      "version": "0.0.0",
+      "type": "resources",
+      "uuid": "110a6d1f-f787-4913-80c9-10b148d9ce38",
+      "description": "resources module"
+    }
+  ]
+}

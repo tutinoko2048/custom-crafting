@@ -1,0 +1,90 @@
+name: Release
+
+on:
+  push:
+    tags:
+      # v1.0.0 / v1.0.0-beta.1 など
+      - 'v*.*.*'
+
+env:
+  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+  VP_GIT_HOOKS: 0
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Set up pnpm and Node.js
+        uses: pnpm/setup@v3
+        with:
+          cache: true
+          require-lockfile: true
+
+      # バージョンの SSOT は root の package.json
+      - name: Verify package version
+        id: version
+        run: |
+          version="$(node -p "require('./package.json').version")"
+          if [ "v$version" != "$GITHUB_REF_NAME" ]; then
+            printf 'Tag %s does not match package version %s\n' "$GITHUB_REF_NAME" "$version" >&2
+            exit 1
+          fi
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          # 1.0.0-beta.1 のようにプレリリース識別子があれば prerelease として出す
+          case "$version" in
+            *-*) echo "prerelease=true" >> "$GITHUB_OUTPUT" ;;
+            *) echo "prerelease=false" >> "$GITHUB_OUTPUT" ;;
+          esac
+
+      - name: Check
+        run: pnpm exec vp check
+
+      - name: Test
+        run: pnpm run test
+
+      - name: Sync manifest versions
+        run: node tools/sync-version.ts
+
+      - name: Build
+        run: pnpm run build
+
+      - name: Package
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          mkdir -p stage dist
+          stage() {
+            # $1: パックのディレクトリ（stage/ にも同じ名前で置く）
+            local files
+            files=$(jq -r '.files[]' "$1/package.json")
+            mkdir -p "stage/$1"
+            (cd "$1" && cp -r --parents $files "../stage/$1/")
+            cp LICENSE "stage/$1/"
+          }
+          stage behavior
+          stage resource
+
+          # 単体の mcpack は manifest.json が zip の直下に来るようにする
+          (cd stage/behavior && zip -qr "../../dist/CustomCrafting-BP-v$VERSION.mcpack" .)
+          (cd stage/resource && zip -qr "../../dist/CustomCrafting-RP-v$VERSION.mcpack" .)
+          # mcaddon は behavior / resource のフォルダをそのまま入れる
+          (cd stage && zip -qr "../dist/CustomCrafting-v$VERSION.mcaddon" behavior resource)
+
+          ls -l dist
+          unzip -l "dist/CustomCrafting-v$VERSION.mcaddon"
+
+      - name: Create draft release
+        env:
+          PRERELEASE: ${{ steps.version.outputs.prerelease }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" dist/* \
+            --draft \
+            --prerelease="$PRERELEASE" \
+            --title "$GITHUB_REF_NAME" \
+            --generate-notes

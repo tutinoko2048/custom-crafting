@@ -1,0 +1,29 @@
+packages:
+  - behavior
+  - resource
+
+catalogMode: prefer
+
+catalog:
+  '@minecraft/server': 2.12.0-beta.1.26.63-stable
+  '@minecraft/server-ui': 2.4.0-beta.1.26.63-stable
+  '@bedrock-apis/env-types': 1.1.0-rc
+  '@types/node': ^24
+  typescript: ^7.0.2
+  vite: npm:@voidzero-dev/vite-plus-core@1.4.0
+  vite-plus: 1.4.0
+
+overrides:
+  # server-ui などが別バージョンの @minecraft/server を引き込まないよう固定する
+  '@minecraft/server': 'catalog:'
+  vite@*: 'catalog:'
+
+peerDependencyRules:
+  allowAny:
+    - vite
+  allowedVersions:
+    vite: '*'
+
+skills:
+  dirs:
+    - .agents/skills

@@ -1,0 +1,9 @@
+{
+  "name": "@custom-crafting/resource",
+  "private": true,
+  "files": [
+    "./manifest.json",
+    "./texts"
+  ],
+  "type": "module"
+}

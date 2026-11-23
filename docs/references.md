@@ -1,0 +1,17 @@
+# 参考資料
+
+- [VirtualContainer Class](https://learn.microsoft.com/en-us/minecraft/creator/scriptapi/minecraft/server/virtualcontainer?view=minecraft-bedrock-experimental)
+- [VirtualContainerManager Class](https://learn.microsoft.com/en-us/minecraft/creator/scriptapi/minecraft/server/virtualcontainermanager?view=minecraft-bedrock-experimental)
+- [VirtualContainerOptions](https://learn.microsoft.com/en-us/minecraft/creator/scriptapi/minecraft/server/virtualcontaineroptions?view=minecraft-bedrock-experimental)
+- [VirtualContainerItemChangeAfterEvent](https://learn.microsoft.com/en-us/minecraft/creator/scriptapi/minecraft/server/virtualcontaineritemchangeafterevent?view=minecraft-bedrock-experimental)
+- [VirtualContainerCloseAfterEvent](https://learn.microsoft.com/en-us/minecraft/creator/scriptapi/minecraft/server/virtualcontainercloseafterevent?view=minecraft-bedrock-experimental)
+- [VirtualContainerCloseReason](https://learn.microsoft.com/en-us/minecraft/creator/scriptapi/minecraft/server/virtualcontainerclosereason?view=minecraft-bedrock-experimental)
+- [VirtualContainerOpenErrorReason](https://learn.microsoft.com/en-us/minecraft/creator/scriptapi/minecraft/server/virtualcontaineropenerrorreason?view=minecraft-bedrock-experimental)
+- [CustomCommandRegistry](https://learn.microsoft.com/en-us/minecraft/creator/scriptapi/minecraft/server/customcommandregistry?view=minecraft-bedrock-stable)
+- [CustomCommand](https://learn.microsoft.com/en-us/minecraft/creator/scriptapi/minecraft/server/customcommand?view=minecraft-bedrock-stable)
+- [PlayerCursorInventoryComponent](https://learn.microsoft.com/en-us/minecraft/creator/scriptapi/minecraft/server/playercursorinventorycomponent?view=minecraft-bedrock-stable)
+- [PlayerCursorItemGrabAfterEvent](https://learn.microsoft.com/en-us/minecraft/creator/scriptapi/minecraft/server/playercursoritemgrabafterevent?view=minecraft-bedrock-experimental)
+- [StructureManager](https://learn.microsoft.com/en-us/minecraft/creator/scriptapi/minecraft/server/structuremanager?view=minecraft-bedrock-stable)
+- [ItemStack](https://learn.microsoft.com/en-us/minecraft/creator/scriptapi/minecraft/server/itemstack?view=minecraft-bedrock-stable)
+- [Introduction to DataDriven UI (DDUI)](https://learn.microsoft.com/en-us/minecraft/creator/documents/scripting/intro-to-ddui)
+- [Bedrock Edition Preview 26.70.24](https://minecraft.wiki/w/Bedrock_Edition_Preview_26.70.24)

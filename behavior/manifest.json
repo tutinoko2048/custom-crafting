@@ -1,0 +1,40 @@
+{
+  "format_version": 3,
+  "header": {
+    "name": "[BP] CustomCrafting",
+    "description": "",
+    "uuid": "3ee4e26c-8169-43a6-8911-36d713f50a82",
+    "version": "0.1.0",
+    "min_engine_version": "1.26.0"
+  },
+  "modules": [
+    {
+      "version": "0.0.0",
+      "type": "data",
+      "uuid": "383a4cdf-baf5-46ac-bdde-ffa0bf020150",
+      "description": "data module"
+    },
+    {
+      "version": "0.0.0",
+      "type": "script",
+      "language": "javascript",
+      "entry": "scripts/main.js",
+      "uuid": "8ab2923e-34dc-4180-a114-2e07c08729fa",
+      "description": "script module"
+    }
+  ],
+  "dependencies": [
+    {
+      "uuid": "e8e31aa6-788c-47d6-aeb8-5cf8440b5889",
+      "version": "0.1.0"
+    },
+    {
+      "module_name": "@minecraft/server",
+      "version": "beta"
+    },
+    {
+      "module_name": "@minecraft/server-ui",
+      "version": "beta"
+    }
+  ]
+}
