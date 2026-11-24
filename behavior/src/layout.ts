@@ -1,17 +1,17 @@
 // クラフト画面（チェスト画面・1行9マス）のスロット割り当て。docs/04-crafting-screen.md
-// グリッドサイズ（1〜6）から作る。3×3 の場合：
+// グリッドサイズ（3×3 か 5×5）から作る。3×3 の場合：
 //
 //  ■  [ ][ ][ ]  ■  ■  ■  ■  ■
 //  ■  [ ][ ][ ]  ■  →  ■  [完成] ■
 //  ■  [ ][ ][ ]  ■  ■  ■  ■  ■
 //
-// 5×5 と 6×6 は横幅が足りないので、グリッドを左端に寄せ、矢印と完成品を右端に置く
+// 5×5 は横幅が足りないので、グリッドを左端に寄せ、矢印と完成品を右端に置く
 
 import { UI_ARROW, UI_FILLER } from './constants';
 import type { ScreenLayout } from './screen';
 
-/** 選べるグリッドサイズ。チェスト画面は最大 6 行なので 6×6 まで */
-export const GRID_SIZES = [1, 2, 3, 4, 5, 6] as const;
+/** 選べるグリッドサイズ */
+export const GRID_SIZES = [3, 5] as const;
 export const DEFAULT_GRID_SIZE = 3;
 
 export const isGridSize = (value: unknown): value is number =>

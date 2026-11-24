@@ -19,7 +19,7 @@ import { giveOrDrop } from './util';
 export interface StationConfig {
   /** コンテナのタイトル。空なら既定の名前（色名）を使う */
   name: string;
-  /** グリッドの一辺（1〜6） */
+  /** グリッドの一辺（3 か 5） */
   gridSize: number;
   recipes: RecipeMeta[];
 }

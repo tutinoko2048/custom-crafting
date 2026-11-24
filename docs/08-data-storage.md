@@ -12,7 +12,7 @@
 ## 保存（エディタで保存したとき）
 
 1. 管理者の近く（チャンクが読み込まれている場所）に、透明な保管用エンティティ `craft:recipe_store`（`minecraft:inventory` 持ち）を召喚する
-2. 材料と完成品を `setItem` で入れる。先頭からグリッドサイズ×グリッドサイズが材料、その次が完成品（3×3 なら 0〜8 と 9）。インベントリは 6×6＋1 が入るよう 54 にしている。どのサイズで保存したかはレシピのメタ情報 `gridSize` に残す（ないものは 3×3）
+2. 材料と完成品を `setItem` で入れる。先頭からグリッドサイズ×グリッドサイズが材料、その次が完成品（3×3 なら 0〜8 と 9）。5×5 でも 26 スロットなので、インベントリ 27 に収まる。どのサイズで保存したかはレシピのメタ情報 `gridSize` に残す（ないものは 3×3）
 3. `structureManager.createFromWorld("craft:r_<recipeId>", dim, pos, pos, { includeBlocks: false, includeEntities: true, saveMode: World })` で保存する
 4. エンティティを `remove()` で消す（kill にしない＝中身をドロップさせない）
 
