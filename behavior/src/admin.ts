@@ -69,8 +69,8 @@ const ICON = {
 const woolIcon = (color: Color): string =>
   `textures/blocks/wool_colored_${color === 'light_gray' ? 'silver' : color}`;
 
-/** ActionForm の1行。ボタンか、区切り・見出し */
-type Entry = { button: Message; icon?: string; next: Screen } | { header: Message } | 'divider';
+/** ActionForm の1行。ボタンか、区切り・ラベル（header は文字が大きすぎるので使わない） */
+type Entry = { button: Message; icon?: string; next: Screen } | { label: Message } | 'divider';
 
 /** ボタンの一覧を表示し、押されたボタンの画面を開く。閉じられたら何もしない */
 async function menu(
@@ -84,7 +84,7 @@ async function menu(
   const screens: Screen[] = [];
   for (const entry of entries) {
     if (entry === 'divider') form.divider();
-    else if ('header' in entry) form.header(entry.header);
+    else if ('label' in entry) form.label(entry.label);
     else {
       form.button(entry.button, entry.icon);
       screens.push(entry.next);
@@ -152,7 +152,7 @@ function stationSettings(player: Player, key: string): Promise<void> {
       next: () => stationName(player, key),
     },
     'divider',
-    { header: tr('craft.admin.recipes') },
+    { label: tr('craft.admin.recipes') },
     ...station.recipes.map((recipe) => ({
       // アイテムを読み込めなかったレシピは使えないので、印を付ける
       button: getRecipeItems(recipe.id) ? recipe.name : `§c${recipe.name} (!)`,
