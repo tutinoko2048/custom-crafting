@@ -6,6 +6,7 @@ import {
   type Player,
   PlayerPermissionLevel,
 } from '@minecraft/server';
+import { UI_CRAFT_ALL, UI_FILLER } from './constants';
 import { type CraftingLayout, craftingLayout } from './layout';
 import { findRecipe, itemMatches, type Recipe } from './recipe';
 import { blockedReason, completeCraft } from './requirements';
@@ -190,6 +191,8 @@ export async function openStation(player: Player, key: string): Promise<void> {
       blocked = reason ? recipe : undefined;
       shown = recipe && !reason ? { recipe, item: recipe.result.clone() } : undefined;
       container.setItem(resultSlot, shown?.item);
+      // まとめて作るボタンは、作れるとき（完成品を出しているとき）だけ出す
+      screen.setLocked(layout.craftAllSlot, shown ? UI_CRAFT_ALL : UI_FILLER);
     },
 
     onClose(screen) {

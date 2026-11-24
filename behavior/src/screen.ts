@@ -83,6 +83,8 @@ export class ContainerScreen {
   private touched = new Set<number>();
   private scheduled = false;
   private retries = 0;
+  /** 動かせないスロットと、今そこに置く UI アイテム。setLocked で画面ごとに差し替えられる */
+  private readonly locked: Map<number, string>;
 
   private constructor(
     readonly player: Player,
@@ -91,9 +93,10 @@ export class ContainerScreen {
     this.playerId = player.id;
     this.closed = new Promise((resolve) => (this.resolveClosed = resolve));
 
-    const { size, locked } = spec.layout;
+    const { size } = spec.layout;
+    this.locked = new Map(spec.layout.locked);
     this.container = world.virtualContainerManager.create({ size, title: spec.title });
-    for (const [slot, typeId] of locked) this.container.setItem(slot, new ItemStack(typeId));
+    for (const [slot, typeId] of this.locked) this.container.setItem(slot, new ItemStack(typeId));
     spec.fill?.(this.container);
   }
 
@@ -103,6 +106,16 @@ export class ContainerScreen {
    */
   give(item: ItemStack): void {
     if (this.player.isValid) giveOrDrop(this.player, item);
+  }
+
+  /**
+   * 動かせないスロットの UI アイテムを差し替える（条件を満たしたときだけボタンを出す、など）。
+   * レイアウトで動かせないスロットにしたものだけが対象
+   */
+  setLocked(slot: number, typeId: string): void {
+    if (!this.locked.has(slot) || this.locked.get(slot) === typeId) return;
+    this.locked.set(slot, typeId);
+    this.container.setItem(slot, new ItemStack(typeId));
   }
 
   private get active(): boolean {
@@ -185,8 +198,7 @@ export class ContainerScreen {
 
   /** 動かせないスロットを元に戻す。そこに置かれたアイテムはプレイヤーに返す */
   private restoreLocked(): void {
-    const { container } = this;
-    const { locked } = this.spec.layout;
+    const { container, locked } = this;
     for (let slot = 0; slot < container.size; slot++) {
       const item = container.getItem(slot);
       const expected = locked.get(slot);

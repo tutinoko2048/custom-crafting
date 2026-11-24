@@ -7,7 +7,7 @@
 //
 // 5×5 は横幅が足りないので、グリッドを左端に寄せ、矢印と完成品を右端に置く
 
-import { UI_ARROW, UI_CRAFT_ALL, UI_FILLER } from './constants';
+import { UI_ARROW, UI_FILLER } from './constants';
 import type { ScreenLayout } from './screen';
 
 /** 選べるグリッドサイズ */
@@ -24,19 +24,18 @@ export interface CraftingLayout extends ScreenLayout {
   /** 材料グリッドのスロット番号（左上から行ごと） */
   gridSlots: readonly number[];
   resultSlot: number;
-  /** まとめて作るボタン（完成品のすぐ下）。エディタでは穴埋めにする */
+  /**
+   * まとめて作るボタンの場所（完成品のすぐ下）。最初は穴埋めにしておき、
+   * クラフト画面が作れるときだけボタンに差し替える（crafting.ts）
+   */
   craftAllSlot: number;
 }
 
-const cache = new Map<string, CraftingLayout>();
+const cache = new Map<number, CraftingLayout>();
 
-/**
- * クラフト画面とエディタで共通の画面構成。グリッド・完成品以外は動かせない UI アイテムで埋める。
- * @param craftAll まとめて作るボタンを置く（クラフト画面）。エディタでは置かない
- */
-export function craftingLayout(gridSize: number, craftAll = true): CraftingLayout {
-  const cacheKey = `${gridSize}:${craftAll}`;
-  const cached = cache.get(cacheKey);
+/** クラフト画面とエディタで共通の画面構成。グリッド・完成品以外は動かせない UI アイテムで埋める */
+export function craftingLayout(gridSize: number): CraftingLayout {
+  const cached = cache.get(gridSize);
   if (cached) return cached;
 
   const rows = Math.max(3, gridSize);
@@ -56,11 +55,6 @@ export function craftingLayout(gridSize: number, craftAll = true): CraftingLayou
   const arrowSlot = middle * COLUMNS + arrowColumn;
   const craftAllSlot = resultSlot + COLUMNS;
   const size = rows * COLUMNS;
-  const uiItemAt = (slot: number): string => {
-    if (slot === arrowSlot) return UI_ARROW;
-    if (craftAll && slot === craftAllSlot) return UI_CRAFT_ALL;
-    return UI_FILLER;
-  };
 
   const layout: CraftingLayout = {
     gridSize,
@@ -71,9 +65,9 @@ export function craftingLayout(gridSize: number, craftAll = true): CraftingLayou
     locked: new Map(
       Array.from({ length: size }, (_, slot) => slot)
         .filter((slot) => slot !== resultSlot && !gridSlots.includes(slot))
-        .map((slot) => [slot, uiItemAt(slot)]),
+        .map((slot) => [slot, slot === arrowSlot ? UI_ARROW : UI_FILLER]),
     ),
   };
-  cache.set(cacheKey, layout);
+  cache.set(gridSize, layout);
   return layout;
 }
