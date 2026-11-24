@@ -11,7 +11,8 @@ import {
 } from '@minecraft/server-ui';
 import { type Color, COLORS, stationColor, stationKey } from './constants';
 import { openEditor } from './editor';
-import { MATCH_MODES, RECIPE_SHAPES, type RecipeMeta, toCount } from './recipe';
+import { GRID_SIZES } from './layout';
+import { MATCH_MODES, RECIPE_SHAPES, type RecipeMeta, toCount, trimGrid } from './recipe';
 import { deleteRecipeItems, ensureLoaded, getRecipeItems, getStation, setStation } from './store';
 import { tr } from './util';
 
@@ -54,6 +55,7 @@ async function ask<R extends FormResponse>(
 /** ボタンのアイコン（バニラのテクスチャ） */
 const ICON = {
   name: 'textures/items/name_tag',
+  gridSize: 'textures/blocks/crafting_table_top',
   recipe: 'textures/items/paper',
   add: 'textures/items/book_writable',
   back: 'textures/items/arrow',
@@ -145,17 +147,34 @@ function stationSettings(player: Player, key: string): Promise<void> {
   const station = getStation(key);
   const self: Screen = () => stationSettings(player, key);
 
+  /** 一覧のラベル。使えないレシピには理由の印を付ける */
+  const recipeLabel = (recipe: RecipeMeta): Message => {
+    const items = getRecipeItems(recipe.id);
+    // アイテムを読み込めなかった
+    if (!items) return `§c${recipe.name} (!)`;
+    // 材料の範囲が今のグリッドに収まらない
+    const shape = trimGrid(items.grid, items.gridSize);
+    if (shape && Math.max(shape.width, shape.height) > station.gridSize) {
+      return twoLines(`§6${recipe.name}`, tr('craft.admin.recipe.too_large'));
+    }
+    return recipe.name;
+  };
+
   return menu(player, text(tr('craft.admin.title'), ' - ', colorName(key)), [
     {
       button: twoLines(tr('craft.admin.station.name'), station.name || colorName(key)),
       icon: ICON.name,
       next: () => stationName(player, key),
     },
+    {
+      button: twoLines(tr('craft.admin.station.grid'), gridSizeLabel(station.gridSize)),
+      icon: ICON.gridSize,
+      next: () => stationGridSize(player, key),
+    },
     'divider',
     { label: tr('craft.admin.recipes') },
     ...station.recipes.map((recipe) => ({
-      // アイテムを読み込めなかったレシピは使えないので、印を付ける
-      button: getRecipeItems(recipe.id) ? recipe.name : `§c${recipe.name} (!)`,
+      button: recipeLabel(recipe),
       icon: ICON.recipe,
       next: () => recipeDetail(player, key, recipe.id),
     })),
@@ -170,6 +189,26 @@ function stationSettings(player: Player, key: string): Promise<void> {
     'divider',
     { button: tr('craft.admin.back'), icon: ICON.back, next: () => colorList(player) },
   ]);
+}
+
+const gridSizeLabel = (size: number): string => `${size}×${size}`;
+
+async function stationGridSize(player: Player, key: string): Promise<void> {
+  const form = new ModalFormData()
+    .title(tr('craft.admin.station.grid'))
+    .dropdown(tr('craft.admin.station.grid'), GRID_SIZES.map(gridSizeLabel), {
+      defaultValueIndex: (GRID_SIZES as readonly number[]).indexOf(getStation(key).gridSize),
+      tooltip: tr('craft.admin.station.grid.description'),
+    })
+    .submitButton(tr('craft.admin.save'));
+  const values = (await ask(player, form))?.formValues;
+  const size = typeof values?.[0] === 'number' ? GRID_SIZES[values[0]] : undefined;
+  if (size !== undefined) {
+    const station = getStation(key);
+    station.gridSize = size;
+    setStation(key, station);
+  }
+  return stationSettings(player, key);
 }
 
 async function stationName(player: Player, key: string): Promise<void> {

@@ -247,4 +247,21 @@ describe('findRecipe', () => {
     expect(findRecipe([shapeless, shaped], grid, 3)).toBe(shaped);
     expect(findRecipe([shaped, shapeless], grid, 3)).toBe(shaped);
   });
+
+  test('3×3 で登録したレシピは、5×5 のグリッドのどこに置いても一致する', () => {
+    const grid5: (ItemStack | undefined)[] = Array.from({ length: 25 }, () => _);
+    // 右下寄りに置く
+    [plank(), plank(), plank()].forEach((item, x) => (grid5[2 * 5 + 2 + x] = item));
+    grid5[3 * 5 + 3] = stick();
+    grid5[4 * 5 + 3] = stick();
+    expect(findRecipe([pickaxe], grid5, 5)).toBe(pickaxe);
+  });
+
+  test('5×5 で登録したレシピも、置いた範囲が同じなら 3×3 で一致する', () => {
+    const grid5: (ItemStack | undefined)[] = Array.from({ length: 25 }, () => _);
+    grid5[0] = plank();
+    grid5[6] = stick();
+    const big = { ...recipe('big', grid5, 'id'), gridSize: 5 };
+    expect(findRecipe([big], [plank(), _, _, _, stick(), _, _, _, _], 3)).toBe(big);
+  });
 });

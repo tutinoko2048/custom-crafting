@@ -6,7 +6,7 @@ import {
   type Player,
   PlayerPermissionLevel,
 } from '@minecraft/server';
-import { CRAFTING_LAYOUT, GRID_SIZE, GRID_SLOTS, RESULT_SLOT } from './layout';
+import { type CraftingLayout, craftingLayout } from './layout';
 import { findRecipe, itemMatches, type Recipe } from './recipe';
 import { blockedReason, completeCraft } from './requirements';
 import { ContainerScreen } from './screen';
@@ -15,12 +15,12 @@ import { tr } from './util';
 
 export const stationTitle = (key: string, name: string): string => name || `craft.station.${key}`;
 
-const readGrid = (container: Container): (ItemStack | undefined)[] =>
-  GRID_SLOTS.map((slot) => container.getItem(slot));
+const readGrid = (container: Container, layout: CraftingLayout): (ItemStack | undefined)[] =>
+  layout.gridSlots.map((slot) => container.getItem(slot));
 
 /** 材料を1回分消費する */
-function consume(container: Container): void {
-  for (const slot of GRID_SLOTS) {
+function consume(container: Container, layout: CraftingLayout): void {
+  for (const slot of layout.gridSlots) {
     const item = container.getItem(slot);
     if (!item) continue;
     if (item.amount > 1) {
@@ -89,17 +89,22 @@ export async function openStation(player: Player, key: string): Promise<void> {
   /** 材料は当てはまったが、コストや条件を満たさなかったレシピ */
   let blocked: Recipe | undefined;
 
+  const station = getStation(key);
+  const layout = craftingLayout(station.gridSize);
+  const { gridSize, resultSlot } = layout;
+  const grid = (container: Container) => readGrid(container, layout);
+
   ContainerScreen.open(player, {
-    title: stationTitle(key, getStation(key).name),
-    layout: CRAFTING_LAYOUT,
+    title: stationTitle(key, station.name),
+    layout,
     // 完成品スロットの中身はまだクラフトしていないので、材料だけを守る
-    stash: GRID_SLOTS,
+    stash: layout.gridSlots,
 
     onChange(screen, touched) {
       const { container } = screen;
 
-      if (touched.has(RESULT_SLOT)) {
-        const now = container.getItem(RESULT_SLOT);
+      if (touched.has(resultSlot)) {
+        const now = container.getItem(resultSlot);
         if (!shown) {
           // 空の完成品スロットに置かれたアイテムは返す
           if (now) screen.give(now);
@@ -121,8 +126,8 @@ export async function openStation(player: Player, key: string): Promise<void> {
             // 表示してから取られるまでにコストや条件が変わっていることもあるので、もう一度確かめる。
             // 同じ tick に退出したプレイヤーからはコストを取れないが、材料は消費する（複製を防ぐ方を優先）
             const allowed = !player.isValid || blockedReason(player, crafted) === undefined;
-            if (allowed && findRecipe([crafted], readGrid(container), GRID_SIZE)) {
-              consume(container);
+            if (allowed && findRecipe([crafted], grid(container), gridSize)) {
+              consume(container, layout);
               if (player.isValid) completeCraft(player, crafted);
               // 一部だけ取られたときの残り、入れ替えで置かれたアイテムはプレイヤーへ
               if (now) screen.give(now);
@@ -135,19 +140,19 @@ export async function openStation(player: Player, key: string): Promise<void> {
       }
 
       // 再判定して、完成品スロットに本物を置く（一致しない・条件を満たさないなら空にする）
-      const recipe = findRecipe(recipes, readGrid(container), GRID_SIZE);
+      const recipe = findRecipe(recipes, grid(container), gridSize);
       const reason =
         recipe && screen.player.isValid ? blockedReason(screen.player, recipe) : undefined;
       // 条件を満たさない理由は、そのレシピに初めて当てはまったときに1回だけ伝える
       if (reason && recipe !== blocked) screen.player.sendMessage(reason);
       blocked = reason ? recipe : undefined;
       shown = recipe && !reason ? { recipe, item: recipe.result.clone() } : undefined;
-      container.setItem(RESULT_SLOT, shown?.item);
+      container.setItem(resultSlot, shown?.item);
     },
 
     onClose(screen) {
       // グリッドに残ったアイテムを返す。完成品スロットの中身は未クラフトなので返さない
-      for (const item of readGrid(screen.container)) {
+      for (const item of grid(screen.container)) {
         if (item) screen.give(item);
       }
     },

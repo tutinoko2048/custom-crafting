@@ -1,6 +1,7 @@
 // レシピの照合。docs/07-recipe.md
 // ゲームの外（vitest）でも動かせるよう、@minecraft/server は型だけを参照する
 import type { ItemStack } from '@minecraft/server';
+import { DEFAULT_GRID_SIZE, isGridSize } from './layout';
 
 /** 照合モード。後ろほど厳しい */
 export const MATCH_MODES = ['id', 'name', 'lore', 'exact'] as const;
@@ -143,6 +144,8 @@ export interface RecipeMeta {
   name: string;
   match: MatchMode;
   shape: RecipeShape;
+  /** 材料を登録したときのグリッドの一辺。保存したアイテムの並びを読むのに使う */
+  gridSize: number;
   // --- コスト（0 ならなし） ---
   /** 消費する経験値レベル */
   levels: number;
@@ -159,11 +162,16 @@ export interface RecipeMeta {
   command: string;
 }
 
-export const newRecipeMeta = (id: string, name: string): RecipeMeta => ({
+export const newRecipeMeta = (
+  id: string,
+  name: string,
+  gridSize: number = DEFAULT_GRID_SIZE,
+): RecipeMeta => ({
   id,
   name,
   match: 'exact',
   shape: 'shaped',
+  gridSize,
   levels: 0,
   scoreObjective: '',
   scoreAmount: 0,
@@ -188,6 +196,8 @@ export function parseRecipeMeta(raw: unknown): RecipeMeta | undefined {
   const meta = newRecipeMeta(data.id, typeof data.name === 'string' ? data.name : data.id);
   if (isMatchMode(data.match)) meta.match = data.match;
   if (isRecipeShape(data.shape)) meta.shape = data.shape;
+  // グリッドサイズがない古いデータは 3×3
+  if (isGridSize(data.gridSize)) meta.gridSize = data.gridSize;
   meta.levels = toCount(data.levels);
   if (typeof data.scoreObjective === 'string') meta.scoreObjective = data.scoreObjective;
   meta.scoreAmount = toCount(data.scoreAmount);
@@ -198,7 +208,7 @@ export function parseRecipeMeta(raw: unknown): RecipeMeta | undefined {
 }
 
 export interface Recipe extends RecipeMeta {
-  /** 3×3 の材料（左上から行ごと）。各マス1個ずつ消費する */
+  /** gridSize×gridSize の材料（左上から行ごと）。各マス1個ずつ消費する */
   grid: (ItemStack | undefined)[];
   result: ItemStack;
 }
@@ -228,7 +238,8 @@ export function findRecipe(
     if (recipe.shape === 'shapeless') {
       ok = bagMatches(present(recipe.grid), items, matches);
     } else {
-      const shape = trimGrid(recipe.grid, size);
+      // 登録したグリッドの大きさが違っても、置かれた範囲だけを比べるので照合できる
+      const shape = trimGrid(recipe.grid, recipe.gridSize);
       ok = shape !== undefined && shapeMatches(shape, input, matches);
     }
     if (ok && (!best || priority(recipe) > priority(best))) best = recipe;

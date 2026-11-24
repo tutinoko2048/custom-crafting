@@ -1,36 +1,66 @@
-// クラフト画面（チェスト画面・1行9マス×3行）のスロット割り当て。docs/04-crafting-screen.md
+// クラフト画面（チェスト画面・1行9マス）のスロット割り当て。docs/04-crafting-screen.md
+// グリッドサイズ（1〜6）から作る。3×3 の場合：
 //
 //  ■  [ ][ ][ ]  ■  ■  ■  ■  ■
 //  ■  [ ][ ][ ]  ■  →  ■  [完成] ■
 //  ■  [ ][ ][ ]  ■  ■  ■  ■  ■
+//
+// 5×5 と 6×6 は横幅が足りないので、グリッドを左端に寄せ、矢印と完成品を右端に置く
 
 import { UI_ARROW, UI_FILLER } from './constants';
 import type { ScreenLayout } from './screen';
 
-export const GRID_SIZE = 3;
+/** 選べるグリッドサイズ。チェスト画面は最大 6 行なので 6×6 まで */
+export const GRID_SIZES = [1, 2, 3, 4, 5, 6] as const;
+export const DEFAULT_GRID_SIZE = 3;
 
-const CONTAINER_SIZE = 27;
+export const isGridSize = (value: unknown): value is number =>
+  (GRID_SIZES as readonly unknown[]).includes(value);
+
 const COLUMNS = 9;
-const GRID_LEFT = 1;
-const ARROW_SLOT = 14;
 
-/** 材料グリッドのスロット番号（左上から行ごと） */
-export const GRID_SLOTS: readonly number[] = Array.from(
-  { length: GRID_SIZE * GRID_SIZE },
-  (_, i) => Math.floor(i / GRID_SIZE) * COLUMNS + GRID_LEFT + (i % GRID_SIZE),
-);
+export interface CraftingLayout extends ScreenLayout {
+  gridSize: number;
+  /** 材料グリッドのスロット番号（左上から行ごと） */
+  gridSlots: readonly number[];
+  resultSlot: number;
+}
 
-export const RESULT_SLOT = 16;
+const cache = new Map<number, CraftingLayout>();
 
-/**
- * クラフト画面とエディタで共通の画面構成。グリッド・完成品以外は動かせない UI アイテムで埋める。
- * グリッドサイズを色ごとに変えるときは、これをサイズから作る関数にする
- */
-export const CRAFTING_LAYOUT: ScreenLayout = {
-  size: CONTAINER_SIZE,
-  locked: new Map(
-    Array.from({ length: CONTAINER_SIZE }, (_, slot) => slot)
-      .filter((slot) => slot !== RESULT_SLOT && !GRID_SLOTS.includes(slot))
-      .map((slot) => [slot, slot === ARROW_SLOT ? UI_ARROW : UI_FILLER]),
-  ),
-};
+/** クラフト画面とエディタで共通の画面構成。グリッド・完成品以外は動かせない UI アイテムで埋める */
+export function craftingLayout(gridSize: number): CraftingLayout {
+  const cached = cache.get(gridSize);
+  if (cached) return cached;
+
+  const rows = Math.max(3, gridSize);
+  const top = Math.floor((rows - gridSize) / 2);
+  const middle = Math.floor((rows - 1) / 2);
+  // 余白を空けて並べられるなら左に1マス空ける。足りなければ左端に寄せ、矢印と完成品を右端に置く
+  const roomy = gridSize + 5 <= COLUMNS;
+  const left = roomy ? 1 : 0;
+  const arrowColumn = roomy ? left + gridSize + 1 : COLUMNS - 3;
+  const resultColumn = roomy ? arrowColumn + 2 : COLUMNS - 1;
+
+  const gridSlots = Array.from(
+    { length: gridSize * gridSize },
+    (_, i) => (top + Math.floor(i / gridSize)) * COLUMNS + left + (i % gridSize),
+  );
+  const resultSlot = middle * COLUMNS + resultColumn;
+  const arrowSlot = middle * COLUMNS + arrowColumn;
+  const size = rows * COLUMNS;
+
+  const layout: CraftingLayout = {
+    gridSize,
+    gridSlots,
+    resultSlot,
+    size,
+    locked: new Map(
+      Array.from({ length: size }, (_, slot) => slot)
+        .filter((slot) => slot !== resultSlot && !gridSlots.includes(slot))
+        .map((slot) => [slot, slot === arrowSlot ? UI_ARROW : UI_FILLER]),
+    ),
+  };
+  cache.set(gridSize, layout);
+  return layout;
+}

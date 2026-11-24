@@ -12,19 +12,19 @@ import {
   world,
 } from '@minecraft/server';
 import { NAMESPACE, STORE_ENTITY } from './constants';
-import { GRID_SIZE } from './layout';
+import { DEFAULT_GRID_SIZE, isGridSize } from './layout';
 import { parseRecipeMeta, type Recipe, type RecipeMeta } from './recipe';
 import { giveOrDrop } from './util';
 
 export interface StationConfig {
   /** コンテナのタイトル。空なら既定の名前（色名）を使う */
   name: string;
+  /** グリッドの一辺（1〜6） */
+  gridSize: number;
   recipes: RecipeMeta[];
 }
 
-const GRID_CELLS = GRID_SIZE * GRID_SIZE;
-/** 保管用エンティティのスロット：0〜8 が材料、9 が完成品 */
-const RESULT_INDEX = GRID_CELLS;
+const emptyStation = (): StationConfig => ({ name: '', gridSize: DEFAULT_GRID_SIZE, recipes: [] });
 
 const stationProperty = (key: string) => `${NAMESPACE}:station.${key}`;
 const recipeStructure = (id: string) => `${NAMESPACE}:r_${id}`;
@@ -36,17 +36,18 @@ const stashStructure = (playerId: string) =>
 
 export function getStation(key: string): StationConfig {
   const raw = world.getDynamicProperty(stationProperty(key));
-  if (typeof raw !== 'string') return { name: '', recipes: [] };
+  if (typeof raw !== 'string') return emptyStation();
   try {
-    const data = JSON.parse(raw) as { name?: unknown; recipes?: unknown };
+    const data = JSON.parse(raw) as { name?: unknown; gridSize?: unknown; recipes?: unknown };
     const recipes: unknown[] = Array.isArray(data.recipes) ? data.recipes : [];
     return {
       name: typeof data.name === 'string' ? data.name : '',
+      gridSize: isGridSize(data.gridSize) ? data.gridSize : DEFAULT_GRID_SIZE,
       recipes: recipes.flatMap((recipe) => parseRecipeMeta(recipe) ?? []),
     };
   } catch {
     console.warn(`[custom-crafting] broken station data: ${key}`);
-    return { name: '', recipes: [] };
+    return emptyStation();
   }
 }
 
@@ -153,34 +154,44 @@ async function readStructures(
 
 // --- レシピのアイテム ---
 
+/**
+ * 保管用エンティティのスロット：先頭から gridSize×gridSize が材料、その次が完成品。
+ * 3×3 なら 0〜8 が材料、9 が完成品（グリッドサイズを選べるようになる前と同じ並び）
+ */
 interface RecipeItems {
   grid: (ItemStack | undefined)[];
   result: ItemStack;
+  /** 保存した材料の並びの一辺。メタ情報より、実際に保存したアイテムの並びを正とする */
+  gridSize: number;
 }
 
 /** 読み込んだアイテムのキャッシュ。読み込み後はこれだけを使う */
 const cache = new Map<string, RecipeItems>();
 let loading: Promise<void> | undefined;
 
-function allRecipeIds(): string[] {
+function allRecipes(): RecipeMeta[] {
   const prefix = stationProperty('');
   return world
     .getDynamicPropertyIds()
     .filter((id) => id.startsWith(prefix))
-    .flatMap((id) => getStation(id.slice(prefix.length)).recipes.map((recipe) => recipe.id));
+    .flatMap((id) => getStation(id.slice(prefix.length)).recipes);
 }
 
 async function load(player: Player): Promise<void> {
-  const missing = allRecipeIds().filter((id) => !cache.has(id));
-  const read = await readStructures(player, missing.map(recipeStructure));
-  for (const id of missing) {
+  const missing = allRecipes().filter((recipe) => !cache.has(recipe.id));
+  const read = await readStructures(
+    player,
+    missing.map((recipe) => recipeStructure(recipe.id)),
+  );
+  for (const { id, gridSize } of missing) {
     const items = read.get(recipeStructure(id));
-    const result = items?.[RESULT_INDEX];
+    const cells = gridSize * gridSize;
+    const result = items?.[cells];
     if (!items || !result) {
       console.warn(`[custom-crafting] recipe items not found: ${id}`);
       continue;
     }
-    cache.set(id, { grid: items.slice(0, GRID_CELLS), result });
+    cache.set(id, { grid: items.slice(0, cells), result, gridSize });
   }
 }
 
@@ -197,14 +208,22 @@ export function ensureLoaded(player: Player): Promise<void> {
   return loading;
 }
 
-/** 材料は1個ずつ消費するので、個数は 1 にそろえて保存する */
+/**
+ * 材料は1個ずつ消費するので、個数は 1 にそろえて保存する。
+ * @param grid gridSize×gridSize の材料（左上から行ごと）
+ */
 export function saveRecipeItems(
   player: Player,
   id: string,
   grid: readonly (ItemStack | undefined)[],
   result: ItemStack,
 ): void {
+  const gridSize = Math.round(Math.sqrt(grid.length));
+  if (!isGridSize(gridSize) || gridSize * gridSize !== grid.length) {
+    throw new Error(`invalid grid length: ${grid.length}`);
+  }
   const items: RecipeItems = {
+    gridSize,
     grid: grid.map((item) => {
       const copy = item?.clone();
       if (copy) copy.amount = 1;
