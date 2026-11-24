@@ -4,6 +4,7 @@ import {
   NAMESPACE,
   stationKey,
   UI_ARROW,
+  UI_CRAFT_ALL,
   UI_FILLER,
   WORKBENCH_COMPONENT,
 } from '@behavior/constants';
@@ -75,6 +76,7 @@ const terrainTexture = () => ({
     // UI 用ブロック（behavior/blocks/ui_*.json は手書き）
     [UI_FILLER, { textures: `${BLOCK_TEXTURES}/ui_filler` }],
     [UI_ARROW, { textures: `${BLOCK_TEXTURES}/ui_arrow` }],
+    [UI_CRAFT_ALL, { textures: `${BLOCK_TEXTURES}/ui_craft_all` }],
     [`${NAMESPACE}:workbench_bottom`, { textures: `${BLOCK_TEXTURES}/workbench_bottom` }],
     ...COLOR_DEFINITIONS.flatMap((color) =>
       ['top', 'side', 'front'].map((face) => [

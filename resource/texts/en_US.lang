@@ -16,6 +16,7 @@ craft.msg.saved=§aSaved recipe "%s"
 craft.msg.not_saved=§eNot saved: place both ingredients and a result
 craft.msg.save_failed=§cFailed to save the recipe
 craft.msg.stash_returned=§aReturned the items left in your last workbench
+craft.ui.craft_all=Craft all (until ingredients run out)
 craft.msg.blocked.tag=§cYou do not meet the requirements for this recipe
 craft.msg.blocked.once=§cYou cannot craft this recipe again (once per player)
 craft.msg.blocked.levels=§cYou need %s experience levels

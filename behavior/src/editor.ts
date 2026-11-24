@@ -20,7 +20,7 @@ export async function openEditor(
   const existing = recipeId === undefined ? undefined : getRecipeItems(recipeId);
   // 色のグリッドサイズで開く。登録済みのレシピの方が大きければ、材料を欠かさないようそちらに合わせる
   const gridSize = Math.max(getStation(key).gridSize, existing?.gridSize ?? 0);
-  const layout = craftingLayout(gridSize);
+  const layout = craftingLayout(gridSize, false);
   const { gridSlots, resultSlot } = layout;
 
   let saved: string | undefined;

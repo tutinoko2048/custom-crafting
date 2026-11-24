@@ -49,3 +49,5 @@ export const STORE_ENTITY = `${NAMESPACE}:recipe_store`;
 export const UI_PREFIX = `${NAMESPACE}:ui_`;
 export const UI_FILLER = `${UI_PREFIX}filler`;
 export const UI_ARROW = `${UI_PREFIX}arrow`;
+/** まとめて作るボタン。表示名があるのでツールチップが出る */
+export const UI_CRAFT_ALL = `${UI_PREFIX}craft_all`;

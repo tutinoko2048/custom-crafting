@@ -1,4 +1,5 @@
 import { describe, expect, test } from 'vite-plus/test';
+import { UI_CRAFT_ALL, UI_FILLER } from './constants';
 import { craftingLayout, GRID_SIZES } from './layout';
 
 describe('craftingLayout', () => {
@@ -29,4 +30,15 @@ describe('craftingLayout', () => {
     // グリッドと完成品以外はすべて動かせない
     expect(locked.size).toBe(size - gridSlots.length - 1);
   });
+
+  test.each(GRID_SIZES)(
+    '%i×%i：まとめて作るボタンは完成品のすぐ下。エディタでは穴埋め',
+    (gridSize) => {
+      const layout = craftingLayout(gridSize);
+      expect(layout.craftAllSlot).toBe(layout.resultSlot + 9);
+      expect(layout.craftAllSlot).toBeLessThan(layout.size);
+      expect(layout.locked.get(layout.craftAllSlot)).toBe(UI_CRAFT_ALL);
+      expect(craftingLayout(gridSize, false).locked.get(layout.craftAllSlot)).toBe(UI_FILLER);
+    },
+  );
 });

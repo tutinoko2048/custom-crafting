@@ -16,6 +16,7 @@ craft.msg.saved=§aレシピ「%s」を保存しました
 craft.msg.not_saved=§e材料と完成品の両方が置かれていないため、保存しませんでした
 craft.msg.save_failed=§cレシピを保存できませんでした
 craft.msg.stash_returned=§a前回の作業台に残っていたアイテムを返しました
+craft.ui.craft_all=まとめて作る（材料がなくなるまで）
 craft.msg.blocked.tag=§cこのレシピを作る条件を満たしていません
 craft.msg.blocked.once=§cこのレシピはもう作れません（1人1回まで）
 craft.msg.blocked.levels=§c経験値レベルが %s 必要です

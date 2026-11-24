@@ -32,6 +32,38 @@ function consume(container: Container, layout: CraftingLayout): void {
   }
 }
 
+/** まとめて作るとき、1回の操作でクラフトする回数の上限 */
+const MAX_BATCH = 64;
+
+/**
+ * まとめて作る。材料がなくなる・コストや条件を満たさなくなる・インベントリがいっぱいになるまで、
+ * 1回ずつ「判定 → 消費 → 支払い → 完成品を渡す」を繰り返す。作った回数を返す
+ */
+function craftAll(
+  player: Player,
+  container: Container,
+  layout: CraftingLayout,
+  recipe: Recipe,
+): number {
+  const inventory = player.getComponent('minecraft:inventory')?.container;
+  let count = 0;
+  while (count < MAX_BATCH) {
+    if (blockedReason(player, recipe) !== undefined) break;
+    if (!findRecipe([recipe], readGrid(container, layout), layout.gridSize)) break;
+    consume(container, layout);
+    completeCraft(player, recipe);
+    count++;
+    const item = recipe.result.clone();
+    const rest = inventory ? inventory.addItem(item) : item;
+    if (rest) {
+      // インベントリがいっぱい。入りきらなかった分は足元に落として止める
+      player.dimension.spawnItem(rest, player.location);
+      break;
+    }
+  }
+  return count;
+}
+
 /**
  * 材料を消費できなかったクラフトの完成品を、カーソル・インベントリ・地面から回収する。
  * 完成品を取るのと同じ tick に材料を抜かれた場合の複製対策
@@ -137,6 +169,16 @@ export async function openStation(player: Player, key: string): Promise<void> {
             }
           }
         }
+      }
+
+      // まとめて作るボタン。完成品を取ったのと同じ tick なら、二重に作らないよう何もしない
+      if (
+        touched.has(layout.craftAllSlot) &&
+        !touched.has(resultSlot) &&
+        shown &&
+        screen.player.isValid
+      ) {
+        craftAll(screen.player, container, layout, shown.recipe);
       }
 
       // 再判定して、完成品スロットに本物を置く（一致しない・条件を満たさないなら空にする）

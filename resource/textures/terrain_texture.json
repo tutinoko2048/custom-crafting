@@ -8,6 +8,9 @@
     "craft:ui_arrow": {
       "textures": "textures/craft/blocks/ui_arrow"
     },
+    "craft:ui_craft_all": {
+      "textures": "textures/craft/blocks/ui_craft_all"
+    },
     "craft:workbench_bottom": {
       "textures": "textures/craft/blocks/workbench_bottom"
     },
