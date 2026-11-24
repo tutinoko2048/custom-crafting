@@ -6,7 +6,6 @@
     "./blocks",
     "./entities",
     "./item_catalog",
-    "./items",
     "./scripts"
   ],
   "type": "module",

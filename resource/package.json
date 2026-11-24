@@ -8,7 +8,8 @@
     "./models",
     "./render_controllers",
     "./texts",
-    "./textures"
+    "./textures",
+    "./ui"
   ],
   "type": "module"
 }
