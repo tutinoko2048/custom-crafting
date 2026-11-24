@@ -24,37 +24,41 @@ const text = (...parts: (string | UIRawMessage)[]): UIRawMessage => ({
   rawtext: parts.map((part) => (typeof part === 'string' ? { text: part } : part)),
 });
 
+type Screen = () => Promise<void>;
+/** ボタンの onClick。今のフォームを閉じて `screen` を開く */
+type Link = (screen: Screen) => () => void;
+
 /**
- * フォームを表示する。画面の切り替えはここ1か所にまとめる。
- * - `go(next)` は今のフォームを閉じ、閉じきってから `next` を呼ぶ
- * - ほかの画面が閉じきっていなくて表示できなかった（UserBusy）ときは、少し待ってやり直す
+ * フォームを表示する。
+ * - `link(screen)` は「今のフォームを閉じて screen を開く」ボタン処理を返す。
+ *   `close()` の直後でも次のフォームは表示できる
+ * - ほかの画面が開いていて表示できなかった（UserBusy）ときは、少し待ってやり直す
  */
 async function present(
   player: Player,
   title: UIRawMessage,
-  build: (form: CustomForm, go: (next: () => void) => void) => void,
+  build: (form: CustomForm, link: Link) => void,
 ): Promise<void> {
   for (let attempt = 0; attempt < MAX_RETRIES && player.isValid; attempt++) {
     const form = new CustomForm(player, title);
-    let next: (() => void) | undefined;
-    build(form, (target) => {
-      next = target;
+    build(form, (screen) => () => {
       form.close();
+      run(screen());
     });
-
-    const reason = await form.show();
-    if (reason === DataDrivenScreenClosedReason.UserBusy) {
-      await system.waitTicks(RETRY_TICKS);
-      continue;
-    }
-    next?.();
-    return;
+    if ((await form.show()) !== DataDrivenScreenClosedReason.UserBusy) return;
+    await system.waitTicks(RETRY_TICKS);
   }
 }
 
 const run = (screen: Promise<void>): void => {
   screen.catch((error: unknown) => console.warn(`[custom-crafting] admin form: ${String(error)}`));
 };
+
+/** 実物エディタを開き、閉じたら `back` に戻る */
+const editThen =
+  (player: Player, key: string, recipeId: string | undefined, back: Screen): Screen =>
+  () =>
+    openEditor(player, key, recipeId).then(back);
 
 export function openAdmin(player: Player, key?: string): void {
   run(
@@ -68,7 +72,7 @@ const colorName = (key: string): UIRawMessage => tr(`craft.color.${stationColor(
 
 /** 16色の設定状況 */
 function colorList(player: Player): Promise<void> {
-  return present(player, tr('craft.admin.title'), (form, go) => {
+  return present(player, tr('craft.admin.title'), (form, link) => {
     form.label(tr('craft.admin.colors.body'));
     for (const color of COLORS) {
       const key = stationKey(color);
@@ -76,7 +80,10 @@ function colorList(player: Player): Promise<void> {
       const label = station.name
         ? text(colorName(key), ` - ${station.name} (${station.recipes.length})`)
         : text(colorName(key), ` (${station.recipes.length})`);
-      form.button(label, () => go(() => run(stationSettings(player, key))));
+      form.button(
+        label,
+        link(() => stationSettings(player, key)),
+      );
     }
   });
 }
@@ -86,17 +93,20 @@ function stationSettings(player: Player, key: string): Promise<void> {
   const station = getStation(key);
   const name = new ObservableString(station.name, { clientWritable: true });
   const status = new ObservableString('');
+  const self: Screen = () => stationSettings(player, key);
 
-  return present(player, text(tr('craft.admin.title'), ' - ', colorName(key)), (form, go) => {
+  // フォームを開いたまま保存し、結果をその場に表示する
+  const saveName = (): void => {
+    const current = getStation(key);
+    current.name = name.getData().trim().slice(0, MAX_NAME_LENGTH);
+    setStation(key, current);
+    status.setData(`§a✔ ${current.name}`);
+  };
+
+  return present(player, text(tr('craft.admin.title'), ' - ', colorName(key)), (form, link) => {
     form
       .textField(tr('craft.admin.station.name'), name)
-      .button(tr('craft.admin.station.save'), () => {
-        // フォームを開いたまま保存し、結果をその場に表示する
-        const current = getStation(key);
-        current.name = name.getData().trim().slice(0, MAX_NAME_LENGTH);
-        setStation(key, current);
-        status.setData(`§a✔ ${current.name}`);
-      })
+      .button(tr('craft.admin.station.save'), saveName)
       .label(status)
       .divider()
       .header(tr('craft.admin.recipes'));
@@ -104,57 +114,70 @@ function stationSettings(player: Player, key: string): Promise<void> {
     for (const recipe of station.recipes) {
       // アイテムを読み込めなかったレシピは使えないので、印を付ける
       const label = getRecipeItems(recipe.id) ? recipe.name : `§c${recipe.name} (!)`;
-      form.button(label, () => go(() => run(recipeDetail(player, key, recipe.id))));
+      form.button(
+        label,
+        link(() => recipeDetail(player, key, recipe.id)),
+      );
     }
+
     form
-      .button(tr('craft.admin.recipes.add'), () =>
-        go(() => openEditor(player, key, undefined, () => run(stationSettings(player, key)))),
-      )
+      .button(tr('craft.admin.recipes.add'), link(editThen(player, key, undefined, self)))
       .divider()
-      .button(tr('craft.admin.back'), () => go(() => run(colorList(player))));
+      .button(
+        tr('craft.admin.back'),
+        link(() => colorList(player)),
+      );
   });
 }
 
 /** レシピの詳細 */
 function recipeDetail(player: Player, key: string, recipeId: string): Promise<void> {
-  const back = () => run(stationSettings(player, key));
   const recipe = getStation(key).recipes.find((entry) => entry.id === recipeId);
   if (!recipe) return stationSettings(player, key);
 
   const name = new ObservableString(recipe.name, { clientWritable: true });
   const mode = new ObservableNumber(MATCH_MODES.indexOf(recipe.match), { clientWritable: true });
+  const self: Screen = () => recipeDetail(player, key, recipeId);
+  const back: Screen = () => stationSettings(player, key);
 
-  return present(player, text(tr('craft.admin.recipe.title'), ` - ${recipe.name}`), (form, go) => {
-    form
-      .textField(tr('craft.admin.recipe.name'), name)
-      .dropdown(
-        tr('craft.admin.recipe.match'),
-        mode,
-        MATCH_MODES.map((value, index) => ({
-          label: tr(`craft.admin.recipe.match.${value}`),
-          value: index,
-        })),
-        { description: tr('craft.admin.recipe.match.description') },
-      )
-      .button(tr('craft.admin.recipe.save'), () => {
-        const station = getStation(key);
-        const target = station.recipes.find((entry) => entry.id === recipeId);
-        if (target) {
-          target.name = name.getData().trim().slice(0, MAX_NAME_LENGTH) || target.name;
-          target.match = MATCH_MODES[mode.getData()] ?? target.match;
-          setStation(key, station);
-        }
-        go(back);
-      })
-      .button(tr('craft.admin.recipe.edit'), () =>
-        go(() => openEditor(player, key, recipeId, () => run(recipeDetail(player, key, recipeId)))),
-      )
-      .divider()
-      .button(tr('craft.admin.recipe.delete'), () =>
-        go(() => run(confirmDelete(player, key, recipeId, recipe.name))),
-      )
-      .button(tr('craft.admin.back'), () => go(back));
-  });
+  const save = (): void => {
+    const station = getStation(key);
+    const target = station.recipes.find((entry) => entry.id === recipeId);
+    if (!target) return;
+    target.name = name.getData().trim().slice(0, MAX_NAME_LENGTH) || target.name;
+    target.match = MATCH_MODES[mode.getData()] ?? target.match;
+    setStation(key, station);
+  };
+
+  return present(
+    player,
+    text(tr('craft.admin.recipe.title'), ` - ${recipe.name}`),
+    (form, link) => {
+      const goBack = link(back);
+      form
+        .textField(tr('craft.admin.recipe.name'), name)
+        .dropdown(
+          tr('craft.admin.recipe.match'),
+          mode,
+          MATCH_MODES.map((value, index) => ({
+            label: tr(`craft.admin.recipe.match.${value}`),
+            value: index,
+          })),
+          { description: tr('craft.admin.recipe.match.description') },
+        )
+        .button(tr('craft.admin.recipe.save'), () => {
+          save();
+          goBack();
+        })
+        .button(tr('craft.admin.recipe.edit'), link(editThen(player, key, recipeId, self)))
+        .divider()
+        .button(
+          tr('craft.admin.recipe.delete'),
+          link(() => confirmDelete(player, key, recipeId, recipe.name)),
+        )
+        .button(tr('craft.admin.back'), goBack);
+    },
+  );
 }
 
 async function confirmDelete(

@@ -1,26 +1,25 @@
 // 実物登録エディタ。docs/06-admin-ui.md
 // クラフト画面と同じレイアウトに材料と完成品を実物で置き、閉じたときに取り込む
 import { type Player } from '@minecraft/server';
-import { GRID_SLOTS, RESULT_SLOT } from './layout';
-import { hasSession, startSession } from './session';
+import { CRAFTING_LAYOUT, GRID_SLOTS, RESULT_SLOT } from './layout';
+import { ContainerScreen } from './screen';
 import { getRecipeItems, getStation, newRecipeId, saveRecipeItems, setStation } from './store';
-import { tr } from './util';
+import { type LangKey, tr } from './util';
 
 /**
+ * エディタを開き、閉じて保存し終わったら解決する（その後に管理画面へ戻る）。
  * @param recipeId 編集するレシピ。省略すると新しいレシピを作る
- * @param onDone 画面が閉じた後に呼ぶ（管理画面に戻る）
  */
-export function openEditor(
+export async function openEditor(
   player: Player,
   key: string,
   recipeId: string | undefined,
-  onDone: () => void,
-): void {
-  if (hasSession(player)) return;
+): Promise<void> {
   const existing = recipeId === undefined ? undefined : getRecipeItems(recipeId);
 
-  startSession(player, {
-    title: 'craft.editor.title',
+  const screen = ContainerScreen.open(player, {
+    title: 'craft.editor.title' satisfies LangKey,
+    layout: CRAFTING_LAYOUT,
 
     fill(container) {
       if (!existing) return;
@@ -28,8 +27,8 @@ export function openEditor(
       container.setItem(RESULT_SLOT, existing.result.clone());
     },
 
-    onClose(session) {
-      const { container } = session;
+    onClose(screen) {
+      const { container } = screen;
       const grid = GRID_SLOTS.map((slot) => container.getItem(slot));
       const result = container.getItem(RESULT_SLOT);
 
@@ -57,9 +56,9 @@ export function openEditor(
 
       // 置いたアイテムは管理者に返す（登録しただけでアイテムを失わない）
       for (const item of [...grid, result]) {
-        if (item) session.give(item);
+        if (item) screen.give(item);
       }
-      if (player.isValid) onDone();
     },
   });
+  await screen?.closed;
 }

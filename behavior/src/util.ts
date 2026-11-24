@@ -1,9 +1,13 @@
 import { type ItemStack, type Player, type RawMessage } from '@minecraft/server';
+import type { LangArgs, LangKey } from '../../resource/texts/en_US.lang';
 import { UI_PREFIX } from './constants';
 
+export type { LangKey };
+
 /** 言語ファイル（resource/texts）のキーで翻訳するメッセージ */
-export const tr = (key: string, ...args: string[]): RawMessage & { translate: string } =>
-  args.length > 0 ? { translate: key, with: args } : { translate: key };
+export function tr<K extends LangKey>(key: K, ...args: LangArgs[K]): RawMessage {
+  return args.length > 0 ? { translate: key, with: args } : { translate: key };
+}
 
 export const isUiItem = (item: ItemStack | undefined): boolean =>
   item !== undefined && item.typeId.startsWith(UI_PREFIX);

@@ -6,9 +6,9 @@ import {
   type Player,
   PlayerPermissionLevel,
 } from '@minecraft/server';
-import { GRID_SIZE, GRID_SLOTS, RESULT_SLOT } from './layout';
+import { CRAFTING_LAYOUT, GRID_SIZE, GRID_SLOTS, RESULT_SLOT } from './layout';
 import { findRecipe, itemMatches, type Recipe } from './recipe';
-import { hasSession, startSession } from './session';
+import { ContainerScreen } from './screen';
 import { ensureLoaded, getRecipes, getStation } from './store';
 import { tr } from './util';
 
@@ -74,7 +74,7 @@ function reclaim(player: Player, item: ItemStack, amount: number): void {
 
 export async function openStation(player: Player, key: string): Promise<void> {
   await ensureLoaded(player);
-  if (!player.isValid || hasSession(player)) return;
+  if (!player.isValid || ContainerScreen.isOpen(player)) return;
 
   const recipes = getRecipes(key);
   if (recipes.length === 0) {
@@ -86,17 +86,18 @@ export async function openStation(player: Player, key: string): Promise<void> {
   /** 完成品スロットに置いてある本物と、その元になったレシピ */
   let shown: { recipe: Recipe; item: ItemStack } | undefined;
 
-  startSession(player, {
+  ContainerScreen.open(player, {
     title: stationTitle(key, getStation(key).name),
+    layout: CRAFTING_LAYOUT,
 
-    onChange(session, touched) {
-      const { container } = session;
+    onChange(screen, touched) {
+      const { container } = screen;
 
       if (touched.has(RESULT_SLOT)) {
         const now = container.getItem(RESULT_SLOT);
         if (!shown) {
           // 空の完成品スロットに置かれたアイテムは返す
-          if (now) session.give(now);
+          if (now) screen.give(now);
         } else {
           const expected = shown.item;
           const same = now?.isStackable === true && now.isStackableWith(expected);
@@ -105,7 +106,7 @@ export async function openStation(player: Player, key: string): Promise<void> {
             if (now.amount > expected.amount) {
               const extra = now.clone();
               extra.amount = now.amount - expected.amount;
-              session.give(extra);
+              screen.give(extra);
             }
           } else {
             // 量が減った（別のアイテムと入れ替えられた場合も含む）＝1回分のクラフト
@@ -113,10 +114,10 @@ export async function openStation(player: Player, key: string): Promise<void> {
             if (findRecipe([shown.recipe], readGrid(container), GRID_SIZE)) {
               consume(container);
               // 一部だけ取られたときの残り、入れ替えで置かれたアイテムはプレイヤーへ
-              if (now) session.give(now);
+              if (now) screen.give(now);
             } else {
-              if (now && !same) session.give(now);
-              if (session.player.isValid) reclaim(session.player, expected, taken);
+              if (now && !same) screen.give(now);
+              if (screen.player.isValid) reclaim(screen.player, expected, taken);
             }
           }
         }
@@ -128,10 +129,10 @@ export async function openStation(player: Player, key: string): Promise<void> {
       container.setItem(RESULT_SLOT, shown?.item);
     },
 
-    onClose(session) {
+    onClose(screen) {
       // グリッドに残ったアイテムを返す。完成品スロットの中身は未クラフトなので返さない
-      for (const item of readGrid(session.container)) {
-        if (item) session.give(item);
+      for (const item of readGrid(screen.container)) {
+        if (item) screen.give(item);
       }
     },
   });

@@ -9,9 +9,11 @@ catalog:
   '@minecraft/server-ui': 2.5.0-beta.1.26.70-preview.26
   '@bedrock-apis/env-types': 1.1.0-rc
   '@types/node': ^24
-  typescript: ^7.0.2
-  vite: npm:@voidzero-dev/vite-plus-core@1.4.0
-  vite-plus: 1.4.0
+  bedrock-lang: ^0.2.0
+  # bedrock-lang の content mapper は 7.1 から
+  typescript: 7.1.0-beta
+  vite: npm:@voidzero-dev/vite-plus-core@1.7.0
+  vite-plus: 1.7.0
 
 overrides:
   # server-ui などが別バージョンの @minecraft/server を引き込まないよう固定する
@@ -27,3 +29,6 @@ peerDependencyRules:
 skills:
   dirs:
     - .agents/skills
+
+minimumReleaseAgeExclude:
+  - bedrock-lang@0.2.0

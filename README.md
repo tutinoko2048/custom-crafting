@@ -19,7 +19,7 @@ pnpm workspace の monorepo。ツールチェーンは [Vite+](https://viteplus.
 - `vp build` ではなく `pnpm build`（= `vp run -r build`）で全パッケージをビルド（`behavior/scripts/` に出力。キャッシュあり）
 - `pnpm watch` で監視ビルド
 - `pnpm gen` で16色ぶんのブロック定義・言語ファイルの色ごとの行を作り直す（`tools/gen-assets.ts`。生成物はコミットする）
-- `vp check` で format・lint・型チェック（`vp check --fix` で自動修正）
+- `vp check` で format・lint・型チェック（`vp check --fix` で自動修正）。言語ファイルのキーの型は [bedrock-lang](https://github.com/tutinoko2048/bedrock-lang) が `.lang` から作る（`vite.config.ts` で content mapper の実行を許可している）
 - コミット時に pre-commit フックで `vp staged`（ステージしたファイルに `vp check --fix`）が走る
 - 個別に動かすときは `vp run @custom-crafting/behavior#build` のように指定する
 

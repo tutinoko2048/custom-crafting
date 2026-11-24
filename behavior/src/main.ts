@@ -18,13 +18,13 @@ import {
   WORKBENCH_COMPONENT,
 } from './constants';
 import { openStation } from './crafting';
-import { registerSessionEvents } from './session';
+import { ContainerScreen } from './screen';
 import { ensureLoaded, restoreStash } from './store';
-import { tr } from './util';
+import { type LangKey, tr } from './util';
 
 const COLOR_ENUM = `${NAMESPACE}:color`;
 
-const failure = (key: string): CustomCommandResult => ({
+const failure = (key: LangKey): CustomCommandResult => ({
   status: CustomCommandStatus.Failure,
   message: tr(key),
 });
@@ -78,7 +78,7 @@ system.beforeEvents.startup.subscribe(({ blockComponentRegistry, customCommandRe
   customCommandRegistry.registerCommand(
     {
       name: `${NAMESPACE}:open`,
-      description: 'craft.cmd.open.description',
+      description: 'craft.cmd.open.description' satisfies LangKey,
       permissionLevel: CommandPermissionLevel.GameDirectors,
       // チート OFF の配布マップでも、コマンドブロックや NPC から開けるようにする
       cheatsRequired: false,
@@ -93,7 +93,7 @@ system.beforeEvents.startup.subscribe(({ blockComponentRegistry, customCommandRe
   customCommandRegistry.registerCommand(
     {
       name: `${NAMESPACE}:admin`,
-      description: 'craft.cmd.admin.description',
+      description: 'craft.cmd.admin.description' satisfies LangKey,
       permissionLevel: CommandPermissionLevel.Admin,
       cheatsRequired: false,
       optionalParameters: [
@@ -105,7 +105,7 @@ system.beforeEvents.startup.subscribe(({ blockComponentRegistry, customCommandRe
 });
 
 world.afterEvents.worldLoad.subscribe(() => {
-  registerSessionEvents();
+  ContainerScreen.registerEvents();
 });
 
 world.afterEvents.playerSpawn.subscribe(({ player, initialSpawn }) => {

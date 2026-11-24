@@ -7,5 +7,6 @@
     "module": "preserve",
     "moduleResolution": "bundler",
     "noEmit": true
-  }
+  },
+  "contentMappers": [{ "package": "bedrock-lang", "extensions": [".lang"] }]
 }

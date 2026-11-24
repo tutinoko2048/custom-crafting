@@ -4,11 +4,15 @@
 //  ■  [ ][ ][ ]  ■  →  ■  [完成] ■
 //  ■  [ ][ ][ ]  ■  ■  ■  ■  ■
 
-export const GRID_SIZE = 3;
-export const CONTAINER_SIZE = 27;
+import { UI_ARROW, UI_FILLER } from './constants';
+import type { ScreenLayout } from './screen';
 
+export const GRID_SIZE = 3;
+
+const CONTAINER_SIZE = 27;
 const COLUMNS = 9;
 const GRID_LEFT = 1;
+const ARROW_SLOT = 14;
 
 /** 材料グリッドのスロット番号（左上から行ごと） */
 export const GRID_SLOTS: readonly number[] = Array.from(
@@ -16,11 +20,17 @@ export const GRID_SLOTS: readonly number[] = Array.from(
   (_, i) => Math.floor(i / GRID_SIZE) * COLUMNS + GRID_LEFT + (i % GRID_SIZE),
 );
 
-export const ARROW_SLOT = 14;
 export const RESULT_SLOT = 16;
 
-/** 穴埋め用アイテムを置くスロット */
-export const FILLER_SLOTS: readonly number[] = Array.from(
-  { length: CONTAINER_SIZE },
-  (_, i) => i,
-).filter((slot) => slot !== ARROW_SLOT && slot !== RESULT_SLOT && !GRID_SLOTS.includes(slot));
+/**
+ * クラフト画面とエディタで共通の画面構成。グリッド・完成品以外は動かせない UI アイテムで埋める。
+ * グリッドサイズを色ごとに変えるときは、これをサイズから作る関数にする
+ */
+export const CRAFTING_LAYOUT: ScreenLayout = {
+  size: CONTAINER_SIZE,
+  locked: new Map(
+    Array.from({ length: CONTAINER_SIZE }, (_, slot) => slot)
+      .filter((slot) => slot !== RESULT_SLOT && !GRID_SLOTS.includes(slot))
+      .map((slot) => [slot, slot === ARROW_SLOT ? UI_ARROW : UI_FILLER]),
+  ),
+};
