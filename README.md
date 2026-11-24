@@ -35,7 +35,6 @@ Minecraft Preview 26.70 以降で、ワールドの「ベータ API」実験ト�
 
 - 依存のバージョンは `pnpm-workspace.yaml` の `catalog` でまとめて管理する
 - mcpack に含めるファイルは各パッケージの `package.json` の `files` で定義する
-- `mklink.bat` を実行すると、`behavior/` と `resource/` を `development_behavior_packs` / `development_resource_packs` に `<フォルダ名>_BP` / `_RP` としてリンクする
 - Script API の型定義には [`@bedrock-apis/env-types`](https://github.com/bedrock-apis/env-types) を使う
 
 ## CI / リリース
