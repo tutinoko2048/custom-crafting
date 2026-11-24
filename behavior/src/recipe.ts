@@ -9,6 +9,13 @@ export type MatchMode = (typeof MATCH_MODES)[number];
 export const isMatchMode = (value: unknown): value is MatchMode =>
   (MATCH_MODES as readonly unknown[]).includes(value);
 
+/** 形状。固定＝配置どおり（平行移動は許す）、不定＝置き場所を問わず材料の数と種類だけを見る */
+export const RECIPE_SHAPES = ['shaped', 'shapeless'] as const;
+export type RecipeShape = (typeof RECIPE_SHAPES)[number];
+
+export const isRecipeShape = (value: unknown): value is RecipeShape =>
+  (RECIPE_SHAPES as readonly unknown[]).includes(value);
+
 /** 空の行・列を取り除いた配置 */
 export interface Shape<T> {
   width: number;
@@ -58,6 +65,33 @@ export function shapeMatches<A, B>(
   });
 }
 
+/**
+ * 不定形の照合。レシピの材料それぞれに、置かれたアイテムを重複なく1つずつ割り当てられるかを調べる。
+ * 照合モードによっては1つのアイテムが複数の材料に当てはまるので、割り当てを順に試す（最大 9 個）
+ */
+export function bagMatches<A, B>(
+  recipe: readonly A[],
+  input: readonly B[],
+  matches: (recipe: A, input: B) => boolean,
+): boolean {
+  if (recipe.length !== input.length) return false;
+  const used = input.map(() => false);
+  const assign = (i: number): boolean => {
+    if (i === recipe.length) return true;
+    for (let j = 0; j < input.length; j++) {
+      if (used[j] || !matches(recipe[i]!, input[j]!)) continue;
+      used[j] = true;
+      if (assign(i + 1)) return true;
+      used[j] = false;
+    }
+    return false;
+  };
+  return assign(0);
+}
+
+const present = <T>(cells: readonly (T | undefined)[]): T[] =>
+  cells.filter((cell): cell is T => cell !== undefined);
+
 const sameList = (a: readonly string[], b: readonly string[]): boolean =>
   a.length === b.length && a.every((value, i) => value === b[i]);
 
@@ -103,18 +137,46 @@ export function itemMatches(recipe: ItemStack, input: ItemStack, mode: MatchMode
   }
 }
 
-export interface Recipe {
+/** レシピのうち、ワールドのダイナミックプロパティに JSON で保存する部分（アイテムを含まない） */
+export interface RecipeMeta {
   id: string;
   name: string;
   match: MatchMode;
+  shape: RecipeShape;
+}
+
+export const newRecipeMeta = (id: string, name: string): RecipeMeta => ({
+  id,
+  name,
+  match: 'exact',
+  shape: 'shaped',
+});
+
+/** 保存された JSON を読む。欠けている項目は既定値で埋める（古いデータもそのまま読める） */
+export function parseRecipeMeta(raw: unknown): RecipeMeta | undefined {
+  if (typeof raw !== 'object' || raw === null) return undefined;
+  const data = raw as Record<string, unknown>;
+  if (typeof data.id !== 'string') return undefined;
+  const meta = newRecipeMeta(data.id, typeof data.name === 'string' ? data.name : data.id);
+  if (isMatchMode(data.match)) meta.match = data.match;
+  if (isRecipeShape(data.shape)) meta.shape = data.shape;
+  return meta;
+}
+
+export interface Recipe extends RecipeMeta {
   /** 3×3 の材料（左上から行ごと）。各マス1個ずつ消費する */
   grid: (ItemStack | undefined)[];
   result: ItemStack;
 }
 
+/** 優先度。照合が厳しい方、同じなら固定形状の方を優先する */
+const priority = (recipe: Recipe): number =>
+  MATCH_MODES.indexOf(recipe.match) * 2 + (recipe.shape === 'shaped' ? 1 : 0);
+
 /**
  * グリッドに当てはまるレシピを探す。
- * 複数当てはまるときは照合が厳しい方を優先する（名前付きの鍵のレシピが、普通のレシピに食われないように）
+ * 複数当てはまるときは照合が厳しい方を優先する（名前付きの鍵のレシピが、普通のレシピに食われないように）。
+ * 照合の厳しさが同じなら、配置まで指定している固定形状の方を優先する
  */
 export function findRecipe(
   recipes: readonly Recipe[],
@@ -123,15 +185,19 @@ export function findRecipe(
 ): Recipe | undefined {
   const input = trimGrid(grid, size);
   if (!input) return undefined;
+  const items = present(input.cells);
 
   let best: Recipe | undefined;
   for (const recipe of recipes) {
-    const shape = trimGrid(recipe.grid, size);
-    if (!shape) continue;
-    if (!shapeMatches(shape, input, (a, b) => itemMatches(a, b, recipe.match))) continue;
-    if (!best || MATCH_MODES.indexOf(recipe.match) > MATCH_MODES.indexOf(best.match)) {
-      best = recipe;
+    const matches = (a: ItemStack, b: ItemStack) => itemMatches(a, b, recipe.match);
+    let ok: boolean;
+    if (recipe.shape === 'shapeless') {
+      ok = bagMatches(present(recipe.grid), items, matches);
+    } else {
+      const shape = trimGrid(recipe.grid, size);
+      ok = shape !== undefined && shapeMatches(shape, input, matches);
     }
+    if (ok && (!best || priority(recipe) > priority(best))) best = recipe;
   }
   return best;
 }

@@ -1,6 +1,14 @@
 import type { ItemStack } from '@minecraft/server';
 import { describe, expect, test } from 'vite-plus/test';
-import { findRecipe, itemMatches, type Recipe, shapeMatches, trimGrid } from './recipe';
+import {
+  bagMatches,
+  findRecipe,
+  itemMatches,
+  parseRecipeMeta,
+  type Recipe,
+  shapeMatches,
+  trimGrid,
+} from './recipe';
 
 interface FakeOptions {
   nameTag?: string;
@@ -42,10 +50,16 @@ const _ = undefined;
 const stick = () => item('minecraft:stick');
 const plank = () => item('minecraft:planks');
 
-const recipe = (id: string, grid: (ItemStack | undefined)[], match: Recipe['match']): Recipe => ({
+const recipe = (
+  id: string,
+  grid: (ItemStack | undefined)[],
+  match: Recipe['match'],
+  shape: Recipe['shape'] = 'shaped',
+): Recipe => ({
   id,
   name: id,
   match,
+  shape,
   grid,
   result: item(`result:${id}`),
 });
@@ -85,6 +99,48 @@ describe('shapeMatches', () => {
     const a = shape(['x', 'y', _, 'x', _, _, _, _, _]);
     const b = shape(['y', 'x', _, _, 'x', _, _, _, _]);
     expect(shapeMatches(a, b, same)).toBe(false);
+  });
+});
+
+describe('bagMatches', () => {
+  const same = (a: string, b: string) => a === b;
+
+  test('並び順を問わず、数と種類が同じなら一致する', () => {
+    expect(bagMatches(['x', 'y', 'x'], ['x', 'x', 'y'], same)).toBe(true);
+  });
+
+  test('数や種類が違えば一致しない', () => {
+    expect(bagMatches(['x', 'y'], ['x', 'y', 'y'], same)).toBe(false);
+    expect(bagMatches(['x', 'x'], ['x', 'y'], same)).toBe(false);
+  });
+
+  test('1つのアイテムが複数の材料に当てはまっても、割り当てを試し直して一致させる', () => {
+    // 'a' は何にでも当てはまる材料、'b' は b にしか当てはまらない材料
+    const matches = (recipe: string, input: string) => recipe === 'a' || recipe === input;
+    expect(bagMatches(['a', 'b'], ['b', 'c'], matches)).toBe(true);
+    expect(bagMatches(['a', 'b'], ['c', 'c'], matches)).toBe(false);
+  });
+});
+
+describe('parseRecipeMeta', () => {
+  test('古いデータ（形状なし）は固定形状として読む', () => {
+    expect(parseRecipeMeta({ id: 'r1', name: '剣', match: 'name' })).toEqual({
+      id: 'r1',
+      name: '剣',
+      match: 'name',
+      shape: 'shaped',
+    });
+  });
+
+  test('壊れた値は既定値で埋め、id がなければ捨てる', () => {
+    expect(parseRecipeMeta({ id: 'r1', match: 'zzz', shape: 1 })).toEqual({
+      id: 'r1',
+      name: 'r1',
+      match: 'exact',
+      shape: 'shaped',
+    });
+    expect(parseRecipeMeta({ name: 'x' })).toBeUndefined();
+    expect(parseRecipeMeta('x')).toBeUndefined();
   });
 });
 
@@ -157,5 +213,25 @@ describe('findRecipe', () => {
         findRecipe(recipes, [_, _, _, _, item('minecraft:tripwire_hook'), _, _, _, _], 3),
       ).toBe(plain);
     }
+  });
+
+  test('不定形：置き場所を問わず一致する', () => {
+    const mix = recipe('mix', [plank(), stick(), _, _, _, _, _, _, _], 'id', 'shapeless');
+    expect(findRecipe([mix], [_, _, stick(), _, _, _, plank(), _, _], 3)).toBe(mix);
+    expect(findRecipe([mix], [_, _, stick(), _, _, _, stick(), _, _], 3)).toBeUndefined();
+    expect(findRecipe([mix], [plank(), stick(), stick(), _, _, _, _, _, _], 3)).toBeUndefined();
+  });
+
+  test('照合の厳しさが同じなら固定形状を優先する', () => {
+    const grid = [plank(), stick(), _, _, _, _, _, _, _];
+    const shaped = recipe('shaped', [plank(), stick(), _, _, _, _, _, _, _], 'id');
+    const shapeless = recipe(
+      'shapeless',
+      [stick(), plank(), _, _, _, _, _, _, _],
+      'id',
+      'shapeless',
+    );
+    expect(findRecipe([shapeless, shaped], grid, 3)).toBe(shaped);
+    expect(findRecipe([shaped, shapeless], grid, 3)).toBe(shaped);
   });
 });

@@ -11,7 +11,7 @@ import {
 } from '@minecraft/server-ui';
 import { COLORS, stationColor, stationKey } from './constants';
 import { openEditor } from './editor';
-import { MATCH_MODES } from './recipe';
+import { MATCH_MODES, RECIPE_SHAPES } from './recipe';
 import { deleteRecipeItems, ensureLoaded, getRecipeItems, getStation, setStation } from './store';
 import { tr } from './util';
 
@@ -137,6 +137,9 @@ function recipeDetail(player: Player, key: string, recipeId: string): Promise<vo
 
   const name = new ObservableString(recipe.name, { clientWritable: true });
   const mode = new ObservableNumber(MATCH_MODES.indexOf(recipe.match), { clientWritable: true });
+  const shape = new ObservableNumber(RECIPE_SHAPES.indexOf(recipe.shape), {
+    clientWritable: true,
+  });
   const self: Screen = () => recipeDetail(player, key, recipeId);
   const back: Screen = () => stationSettings(player, key);
 
@@ -146,6 +149,7 @@ function recipeDetail(player: Player, key: string, recipeId: string): Promise<vo
     if (!target) return;
     target.name = name.getData().trim().slice(0, MAX_NAME_LENGTH) || target.name;
     target.match = MATCH_MODES[mode.getData()] ?? target.match;
+    target.shape = RECIPE_SHAPES[shape.getData()] ?? target.shape;
     setStation(key, station);
   };
 
@@ -156,6 +160,14 @@ function recipeDetail(player: Player, key: string, recipeId: string): Promise<vo
       const goBack = link(back);
       form
         .textField(tr('craft.admin.recipe.name'), name)
+        .dropdown(
+          tr('craft.admin.recipe.shape'),
+          shape,
+          RECIPE_SHAPES.map((value, index) => ({
+            label: tr(`craft.admin.recipe.shape.${value}`),
+            value: index,
+          })),
+        )
         .dropdown(
           tr('craft.admin.recipe.match'),
           mode,

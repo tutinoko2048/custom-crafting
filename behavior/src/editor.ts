@@ -2,6 +2,7 @@
 // クラフト画面と同じレイアウトに材料と完成品を実物で置き、閉じたときに取り込む
 import { type Player } from '@minecraft/server';
 import { CRAFTING_LAYOUT, GRID_SLOTS, RESULT_SLOT } from './layout';
+import { newRecipeMeta } from './recipe';
 import { ContainerScreen } from './screen';
 import { getRecipeItems, getStation, newRecipeId, saveRecipeItems, setStation } from './store';
 import { type LangKey, tr } from './util';
@@ -40,7 +41,7 @@ export async function openEditor(
             const station = getStation(key);
             let meta = station.recipes.find((recipe) => recipe.id === id);
             if (!meta) {
-              meta = { id, name: `Recipe ${station.recipes.length + 1}`, match: 'exact' };
+              meta = newRecipeMeta(id, `Recipe ${station.recipes.length + 1}`);
               station.recipes.push(meta);
               setStation(key, station);
             }

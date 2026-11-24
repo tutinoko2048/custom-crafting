@@ -13,14 +13,8 @@ import {
 } from '@minecraft/server';
 import { NAMESPACE, STORE_ENTITY } from './constants';
 import { GRID_SIZE } from './layout';
-import { isMatchMode, type MatchMode, type Recipe } from './recipe';
+import { parseRecipeMeta, type Recipe, type RecipeMeta } from './recipe';
 import { giveOrDrop } from './util';
-
-export interface RecipeMeta {
-  id: string;
-  name: string;
-  match: MatchMode;
-}
 
 export interface StationConfig {
   /** コンテナのタイトル。空なら既定の名前（色名）を使う */
@@ -45,20 +39,10 @@ export function getStation(key: string): StationConfig {
   if (typeof raw !== 'string') return { name: '', recipes: [] };
   try {
     const data = JSON.parse(raw) as { name?: unknown; recipes?: unknown };
-    const recipes = (Array.isArray(data.recipes) ? data.recipes : []) as Partial<RecipeMeta>[];
+    const recipes: unknown[] = Array.isArray(data.recipes) ? data.recipes : [];
     return {
       name: typeof data.name === 'string' ? data.name : '',
-      recipes: recipes.flatMap((recipe) =>
-        typeof recipe?.id === 'string'
-          ? [
-              {
-                id: recipe.id,
-                name: typeof recipe.name === 'string' ? recipe.name : recipe.id,
-                match: isMatchMode(recipe.match) ? recipe.match : 'exact',
-              },
-            ]
-          : [],
-      ),
+      recipes: recipes.flatMap((recipe) => parseRecipeMeta(recipe) ?? []),
     };
   } catch {
     console.warn(`[custom-crafting] broken station data: ${key}`);
