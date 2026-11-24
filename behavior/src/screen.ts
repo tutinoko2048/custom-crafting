@@ -14,7 +14,7 @@ import {
   VirtualContainerOpenErrorReason,
   world,
 } from '@minecraft/server';
-import { stashItems } from './store';
+import { clearStash, saveStash } from './store';
 import { giveOrDrop, isUiItem, tr } from './util';
 
 export type ScreenCloseReason = VirtualContainerCloseReason | 'failed';
@@ -40,6 +40,11 @@ export interface ScreenSpec {
   onChange?(screen: ContainerScreen, touched: ReadonlySet<number>): void;
   /** 画面が閉じた。コンテナの中身はまだ読める */
   onClose?(screen: ContainerScreen, reason: ScreenCloseReason): void;
+  /**
+   * 退出やシャットダウンで閉じても失わないスロット。中身が変わるたびにストラクチャーへ保存し、
+   * 正常に閉じたら消す。残っていれば次に参加したときに返す（store.ts の restoreStash）
+   */
+  stash?: readonly number[];
 }
 
 const MAX_RETRIES = 20;
@@ -78,8 +83,6 @@ export class ContainerScreen {
   private touched = new Set<number>();
   private scheduled = false;
   private retries = 0;
-  /** 退出したプレイヤーに返せなかったアイテム */
-  private readonly orphans: ItemStack[] = [];
 
   private constructor(
     readonly player: Player,
@@ -94,10 +97,12 @@ export class ContainerScreen {
     spec.fill?.(this.container);
   }
 
-  /** プレイヤーにアイテムを渡す。退出済みなら退避して、次に参加したときに返す */
+  /**
+   * プレイヤーにアイテムを渡す。
+   * 退出済みなら何もしない。stash のスロットの中身は、保存しておいた分を次に参加したときに返す
+   */
   give(item: ItemStack): void {
     if (this.player.isValid) giveOrDrop(this.player, item);
-    else this.orphans.push(item);
   }
 
   private get active(): boolean {
@@ -136,7 +141,9 @@ export class ContainerScreen {
       this.spec.onClose?.(this, reason);
     } finally {
       this.container.clearAll();
-      stashItems(this.playerId, this.orphans);
+      // 中身をプレイヤーに返したので、保存していた分は要らない。
+      // 退出したプレイヤーには返せていないので、保存した分を残して次の参加時に返す
+      if (this.spec.stash && this.player.isValid) clearStash(this.playerId);
       this.resolveClosed(reason);
     }
 
@@ -161,7 +168,19 @@ export class ContainerScreen {
     this.touched = new Set();
     this.restoreLocked();
     this.spec.onChange?.(this, touched);
-    if (this.player.isValid) purge(this.player);
+    if (!this.player.isValid) return;
+    purge(this.player);
+    this.saveStash();
+  }
+
+  /** stash のスロットの今の中身を保存する。完成品を取って材料が減ったときも、ここで反映される */
+  private saveStash(): void {
+    const { stash } = this.spec;
+    if (stash)
+      saveStash(
+        this.player,
+        stash.map((slot) => this.container.getItem(slot)),
+      );
   }
 
   /** 動かせないスロットを元に戻す。そこに置かれたアイテムはプレイヤーに返す */

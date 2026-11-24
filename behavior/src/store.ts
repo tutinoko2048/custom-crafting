@@ -236,37 +236,36 @@ export const newRecipeId = (): string =>
     .toString(36)
     .padStart(4, '0')}`;
 
-// --- 退出時の退避 ---
+// --- 開いている画面の中身の退避 ---
+// シャットダウン時のイベントは制限付きモードで呼ばれ、アイテムを読むことも保存することもできない。
+// そこで、画面の中身が変わるたびにストラクチャーへ保存しておき、正常に閉じたら消す。
+// 退出・シャットダウンで閉じたときは残り、次に参加したときに返す
 
-/** 退出したプレイヤーに返せなかったアイテム。次に参加したときに返す */
-const stashes = new Map<string, ItemStack[]>();
-
-export function stashItems(playerId: string, items: readonly ItemStack[]): void {
-  if (items.length === 0) return;
-  const all = [...(stashes.get(playerId) ?? []), ...items];
-  stashes.set(playerId, all);
-
-  // ワールドを閉じても残るよう、ほかのプレイヤーがいればストラクチャーにも保存する
-  const anchor = world.getAllPlayers().find((player) => player.id !== playerId);
-  if (!anchor) return;
+/** 画面の中身を保存する。空なら消す */
+export function saveStash(player: Player, items: readonly (ItemStack | undefined)[]): void {
+  const structureId = stashStructure(player.id);
   try {
-    writeStructure(stashStructure(playerId), anchor, all);
+    if (items.some((item) => item !== undefined)) writeStructure(structureId, player, items);
+    else world.structureManager.delete(structureId);
   } catch (error) {
     console.warn(`[custom-crafting] failed to save stash: ${String(error)}`);
   }
 }
 
-/** 退避していたアイテムを返す。返した数を返す */
+/** 画面を正常に閉じて中身をプレイヤーに返したので、保存していた分を消す */
+export function clearStash(playerId: string): void {
+  world.structureManager.delete(stashStructure(playerId));
+}
+
+/** 前回の画面に残っていたアイテムを返す。返した数を返す */
 export async function restoreStash(player: Player): Promise<number> {
   const structureId = stashStructure(player.id);
-  let items = stashes.get(player.id);
-  stashes.delete(player.id);
-  if (!items && world.structureManager.get(structureId)) {
-    const read = await readStructures(player, [structureId]);
-    items = (read.get(structureId) ?? []).filter((item) => item !== undefined);
-  }
+  if (!world.structureManager.get(structureId)) return 0;
+  const read = await readStructures(player, [structureId]);
+  // 読めなかったときは消さずに残し、次の参加でやり直す
+  if (!read.has(structureId) || !player.isValid) return 0;
   world.structureManager.delete(structureId);
-  if (!items || !player.isValid) return 0;
+  const items = read.get(structureId)!.filter((item) => item !== undefined);
   for (const item of items) giveOrDrop(player, item);
   return items.length;
 }

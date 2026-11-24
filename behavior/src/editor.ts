@@ -21,6 +21,8 @@ export async function openEditor(
   const screen = ContainerScreen.open(player, {
     title: 'craft.editor.title' satisfies LangKey,
     layout: CRAFTING_LAYOUT,
+    // 閉じたときと同じく、置いたアイテムは材料も完成品も管理者に返す
+    stash: [...GRID_SLOTS, RESULT_SLOT],
 
     fill(container) {
       if (!existing) return;

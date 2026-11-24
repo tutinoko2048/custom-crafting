@@ -92,6 +92,8 @@ export async function openStation(player: Player, key: string): Promise<void> {
   ContainerScreen.open(player, {
     title: stationTitle(key, getStation(key).name),
     layout: CRAFTING_LAYOUT,
+    // 完成品スロットの中身はまだクラフトしていないので、材料だけを守る
+    stash: GRID_SLOTS,
 
     onChange(screen, touched) {
       const { container } = screen;
