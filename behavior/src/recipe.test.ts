@@ -4,9 +4,11 @@ import {
   bagMatches,
   findRecipe,
   itemMatches,
+  newRecipeMeta,
   parseRecipeMeta,
   type Recipe,
   shapeMatches,
+  toCount,
   trimGrid,
 } from './recipe';
 
@@ -56,8 +58,7 @@ const recipe = (
   match: Recipe['match'],
   shape: Recipe['shape'] = 'shaped',
 ): Recipe => ({
-  id,
-  name: id,
+  ...newRecipeMeta(id, id),
   match,
   shape,
   grid,
@@ -125,22 +126,34 @@ describe('bagMatches', () => {
 describe('parseRecipeMeta', () => {
   test('古いデータ（形状なし）は固定形状として読む', () => {
     expect(parseRecipeMeta({ id: 'r1', name: '剣', match: 'name' })).toEqual({
-      id: 'r1',
-      name: '剣',
+      ...newRecipeMeta('r1', '剣'),
       match: 'name',
-      shape: 'shaped',
     });
   });
 
   test('壊れた値は既定値で埋め、id がなければ捨てる', () => {
-    expect(parseRecipeMeta({ id: 'r1', match: 'zzz', shape: 1 })).toEqual({
-      id: 'r1',
-      name: 'r1',
-      match: 'exact',
-      shape: 'shaped',
-    });
+    expect(
+      parseRecipeMeta({
+        id: 'r1',
+        match: 'zzz',
+        shape: 1,
+        levels: -3,
+        scoreAmount: '12',
+        once: 'yes',
+      }),
+    ).toEqual({ ...newRecipeMeta('r1', 'r1'), scoreAmount: 12 });
     expect(parseRecipeMeta({ name: 'x' })).toBeUndefined();
     expect(parseRecipeMeta('x')).toBeUndefined();
+  });
+});
+
+describe('toCount', () => {
+  test('0 以上の整数にする', () => {
+    expect(toCount(' 5 ')).toBe(5);
+    expect(toCount(2.7)).toBe(2);
+    expect(toCount(-1)).toBe(0);
+    expect(toCount('abc')).toBe(0);
+    expect(toCount(undefined)).toBe(0);
   });
 });
 

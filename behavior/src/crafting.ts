@@ -8,6 +8,7 @@ import {
 } from '@minecraft/server';
 import { CRAFTING_LAYOUT, GRID_SIZE, GRID_SLOTS, RESULT_SLOT } from './layout';
 import { findRecipe, itemMatches, type Recipe } from './recipe';
+import { blockedReason, completeCraft } from './requirements';
 import { ContainerScreen } from './screen';
 import { ensureLoaded, getRecipes, getStation } from './store';
 import { tr } from './util';
@@ -85,6 +86,8 @@ export async function openStation(player: Player, key: string): Promise<void> {
 
   /** 完成品スロットに置いてある本物と、その元になったレシピ */
   let shown: { recipe: Recipe; item: ItemStack } | undefined;
+  /** 材料は当てはまったが、コストや条件を満たさなかったレシピ */
+  let blocked: Recipe | undefined;
 
   ContainerScreen.open(player, {
     title: stationTitle(key, getStation(key).name),
@@ -111,8 +114,14 @@ export async function openStation(player: Player, key: string): Promise<void> {
           } else {
             // 量が減った（別のアイテムと入れ替えられた場合も含む）＝1回分のクラフト
             const taken = same ? expected.amount - now.amount : expected.amount;
-            if (findRecipe([shown.recipe], readGrid(container), GRID_SIZE)) {
+            const crafted = shown.recipe;
+            const { player } = screen;
+            // 表示してから取られるまでにコストや条件が変わっていることもあるので、もう一度確かめる。
+            // 同じ tick に退出したプレイヤーからはコストを取れないが、材料は消費する（複製を防ぐ方を優先）
+            const allowed = !player.isValid || blockedReason(player, crafted) === undefined;
+            if (allowed && findRecipe([crafted], readGrid(container), GRID_SIZE)) {
               consume(container);
+              if (player.isValid) completeCraft(player, crafted);
               // 一部だけ取られたときの残り、入れ替えで置かれたアイテムはプレイヤーへ
               if (now) screen.give(now);
             } else {
@@ -123,9 +132,14 @@ export async function openStation(player: Player, key: string): Promise<void> {
         }
       }
 
-      // 再判定して、完成品スロットに本物を置く（一致しなければ空にする）
+      // 再判定して、完成品スロットに本物を置く（一致しない・条件を満たさないなら空にする）
       const recipe = findRecipe(recipes, readGrid(container), GRID_SIZE);
-      shown = recipe ? { recipe, item: recipe.result.clone() } : undefined;
+      const reason =
+        recipe && screen.player.isValid ? blockedReason(screen.player, recipe) : undefined;
+      // 条件を満たさない理由は、そのレシピに初めて当てはまったときに1回だけ伝える
+      if (reason && recipe !== blocked) screen.player.sendMessage(reason);
+      blocked = reason ? recipe : undefined;
+      shown = recipe && !reason ? { recipe, item: recipe.result.clone() } : undefined;
       container.setItem(RESULT_SLOT, shown?.item);
     },
 

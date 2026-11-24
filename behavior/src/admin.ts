@@ -5,13 +5,14 @@ import {
   CustomForm,
   DataDrivenScreenClosedReason,
   MessageBox,
+  ObservableBoolean,
   ObservableNumber,
   ObservableString,
   type UIRawMessage,
 } from '@minecraft/server-ui';
 import { COLORS, stationColor, stationKey } from './constants';
 import { openEditor } from './editor';
-import { MATCH_MODES, RECIPE_SHAPES } from './recipe';
+import { MATCH_MODES, RECIPE_SHAPES, toCount } from './recipe';
 import { deleteRecipeItems, ensureLoaded, getRecipeItems, getStation, setStation } from './store';
 import { tr } from './util';
 
@@ -140,6 +141,23 @@ function recipeDetail(player: Player, key: string, recipeId: string): Promise<vo
   const shape = new ObservableNumber(RECIPE_SHAPES.indexOf(recipe.shape), {
     clientWritable: true,
   });
+  // コスト・条件・報酬。上級者向けなので、何も設定していなければ折りたたんでおく
+  const writable = { clientWritable: true };
+  const levels = new ObservableString(String(recipe.levels), writable);
+  const scoreObjective = new ObservableString(recipe.scoreObjective, writable);
+  const scoreAmount = new ObservableString(String(recipe.scoreAmount), writable);
+  const tag = new ObservableString(recipe.tag, writable);
+  const once = new ObservableBoolean(recipe.once, writable);
+  const command = new ObservableString(recipe.command, writable);
+  const configured =
+    recipe.levels > 0 ||
+    recipe.scoreObjective !== '' ||
+    recipe.tag !== '' ||
+    recipe.once ||
+    recipe.command !== '';
+  const advanced = new ObservableBoolean(configured, writable);
+  const visible = { visible: advanced };
+
   const self: Screen = () => recipeDetail(player, key, recipeId);
   const back: Screen = () => stationSettings(player, key);
 
@@ -150,6 +168,12 @@ function recipeDetail(player: Player, key: string, recipeId: string): Promise<vo
     target.name = name.getData().trim().slice(0, MAX_NAME_LENGTH) || target.name;
     target.match = MATCH_MODES[mode.getData()] ?? target.match;
     target.shape = RECIPE_SHAPES[shape.getData()] ?? target.shape;
+    target.levels = toCount(levels.getData());
+    target.scoreObjective = scoreObjective.getData().trim();
+    target.scoreAmount = toCount(scoreAmount.getData());
+    target.tag = tag.getData().trim();
+    target.once = once.getData();
+    target.command = command.getData().trim();
     setStation(key, station);
   };
 
@@ -177,6 +201,20 @@ function recipeDetail(player: Player, key: string, recipeId: string): Promise<vo
           })),
           { description: tr('craft.admin.recipe.match.description') },
         )
+        .toggle(tr('craft.admin.recipe.advanced'), advanced)
+        .header(tr('craft.admin.recipe.cost'), visible)
+        .textField(tr('craft.admin.recipe.levels'), levels, visible)
+        .textField(tr('craft.admin.recipe.score'), scoreObjective, visible)
+        .textField(tr('craft.admin.recipe.score.amount'), scoreAmount, visible)
+        .header(tr('craft.admin.recipe.conditions'), visible)
+        .textField(tr('craft.admin.recipe.tag'), tag, visible)
+        .toggle(tr('craft.admin.recipe.once'), once, visible)
+        .header(tr('craft.admin.recipe.reward'), visible)
+        .textField(tr('craft.admin.recipe.command'), command, {
+          ...visible,
+          description: tr('craft.admin.recipe.command.description'),
+        })
+        .divider()
         .button(tr('craft.admin.recipe.save'), () => {
           save();
           goBack();

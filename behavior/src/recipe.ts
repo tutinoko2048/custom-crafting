@@ -143,6 +143,20 @@ export interface RecipeMeta {
   name: string;
   match: MatchMode;
   shape: RecipeShape;
+  // --- コスト（0 ならなし） ---
+  /** 消費する経験値レベル */
+  levels: number;
+  /** 消費するスコアボードの目的（空ならなし）と量 */
+  scoreObjective: string;
+  scoreAmount: number;
+  // --- 条件 ---
+  /** 必要なタグ（空ならなし） */
+  tag: string;
+  /** 1人1回まで */
+  once: boolean;
+  // --- 報酬 ---
+  /** クラフトしたときにプレイヤーとして実行するコマンド（空ならなし） */
+  command: string;
 }
 
 export const newRecipeMeta = (id: string, name: string): RecipeMeta => ({
@@ -150,7 +164,21 @@ export const newRecipeMeta = (id: string, name: string): RecipeMeta => ({
   name,
   match: 'exact',
   shape: 'shaped',
+  levels: 0,
+  scoreObjective: '',
+  scoreAmount: 0,
+  tag: '',
+  once: false,
+  command: '',
 });
+
+/** 0 以上の整数にする。数でなければ 0 */
+export const toCount = (value: unknown): number => {
+  const number = typeof value === 'string' ? Number(value.trim()) : value;
+  return typeof number === 'number' && Number.isFinite(number) && number > 0
+    ? Math.floor(number)
+    : 0;
+};
 
 /** 保存された JSON を読む。欠けている項目は既定値で埋める（古いデータもそのまま読める） */
 export function parseRecipeMeta(raw: unknown): RecipeMeta | undefined {
@@ -160,6 +188,12 @@ export function parseRecipeMeta(raw: unknown): RecipeMeta | undefined {
   const meta = newRecipeMeta(data.id, typeof data.name === 'string' ? data.name : data.id);
   if (isMatchMode(data.match)) meta.match = data.match;
   if (isRecipeShape(data.shape)) meta.shape = data.shape;
+  meta.levels = toCount(data.levels);
+  if (typeof data.scoreObjective === 'string') meta.scoreObjective = data.scoreObjective;
+  meta.scoreAmount = toCount(data.scoreAmount);
+  if (typeof data.tag === 'string') meta.tag = data.tag;
+  meta.once = data.once === true;
+  if (typeof data.command === 'string') meta.command = data.command;
   return meta;
 }
 
