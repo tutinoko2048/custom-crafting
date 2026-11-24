@@ -1,14 +1,12 @@
-// 管理画面（CustomForm / DDUI）。docs/06-admin-ui.md
+// 管理画面（ActionForm / ModalForm）。docs/06-admin-ui.md
 //   色一覧 → 色の設定（表示名・レシピ一覧）→ レシピの詳細 → 項目ごとの設定 / 実物エディタ
-import { type Player, system } from '@minecraft/server';
+// 一覧と目次は ActionForm（ボタンに改行と色コードが使える）、入力は ModalForm にする
+import { type Player, type RawMessage, system } from '@minecraft/server';
 import {
-  CustomForm,
-  DataDrivenScreenClosedReason,
-  MessageBox,
-  ObservableBoolean,
-  ObservableNumber,
-  ObservableString,
-  type UIRawMessage,
+  ActionFormData,
+  FormCancelationReason,
+  type FormResponse,
+  ModalFormData,
 } from '@minecraft/server-ui';
 import { COLORS, stationColor, stationKey } from './constants';
 import { openEditor } from './editor';
@@ -20,37 +18,63 @@ const MAX_RETRIES = 20;
 const RETRY_TICKS = 5;
 /** コンテナのタイトルは 256 バイトまで。日本語（1文字3バイト）でも収まる長さにする */
 const MAX_NAME_LENGTH = 60;
-const WRITABLE = { clientWritable: true };
 const NONE = tr('craft.admin.summary.none');
 
-const text = (...parts: (string | UIRawMessage)[]): UIRawMessage => ({
+type Message = string | RawMessage;
+
+const text = (...parts: Message[]): RawMessage => ({
   rawtext: parts.map((part) => (typeof part === 'string' ? { text: part } : part)),
 });
 
+/** ボタンのラベル。2行目に今の設定などを灰色で添える */
+const twoLines = (label: Message, detail: Message): RawMessage => text(label, '\n§8', detail);
+
 type Screen = () => Promise<void>;
-/** ボタンの onClick。今のフォームを閉じて `screen` を開く */
-type Link = (screen: Screen) => () => void;
 
 /**
- * フォームを表示する。
- * - `link(screen)` は「今のフォームを閉じて screen を開く」ボタン処理を返す。
- *   `close()` の直後でも次のフォームは表示できる
- * - ほかの画面が開いていて表示できなかった（UserBusy）ときは、少し待ってやり直す
+ * フォームを表示する。ほかの画面が開いていて表示できなかった（UserBusy）ときは、少し待ってやり直す。
+ * 閉じられたら undefined
  */
-async function present(
+async function ask<R extends FormResponse>(
   player: Player,
-  title: UIRawMessage,
-  build: (form: CustomForm, link: Link) => void,
-): Promise<void> {
+  form: { show(player: Player): Promise<R> },
+): Promise<R | undefined> {
   for (let attempt = 0; attempt < MAX_RETRIES && player.isValid; attempt++) {
-    const form = new CustomForm(player, title);
-    build(form, (screen) => () => {
-      form.close();
-      run(screen());
-    });
-    if ((await form.show()) !== DataDrivenScreenClosedReason.UserBusy) return;
-    await system.waitTicks(RETRY_TICKS);
+    const response = await form.show(player);
+    if (response.cancelationReason === FormCancelationReason.UserBusy) {
+      await system.waitTicks(RETRY_TICKS);
+      continue;
+    }
+    return response.canceled ? undefined : response;
   }
+  return undefined;
+}
+
+/** ActionForm の1行。ボタンか、区切り・見出し */
+type Entry = { button: Message; next: Screen } | { header: Message } | 'divider';
+
+/** ボタンの一覧を表示し、押されたボタンの画面を開く。閉じられたら何もしない */
+async function menu(
+  player: Player,
+  title: Message,
+  entries: Entry[],
+  body?: Message,
+): Promise<void> {
+  const form = new ActionFormData().title(title);
+  if (body !== undefined) form.body(body);
+  const screens: Screen[] = [];
+  for (const entry of entries) {
+    if (entry === 'divider') form.divider();
+    else if ('header' in entry) form.header(entry.header);
+    else {
+      form.button(entry.button);
+      screens.push(entry.next);
+    }
+  }
+  const response = await ask(player, form);
+  // selection はボタンだけを数えた番号
+  const next = response?.selection === undefined ? undefined : screens[response.selection];
+  return next?.();
 }
 
 const run = (screen: Promise<void>): void => {
@@ -71,80 +95,66 @@ export function openAdmin(player: Player, key?: string): void {
   );
 }
 
-const colorName = (key: string): UIRawMessage => tr(`craft.color.${stationColor(key) ?? 'white'}`);
+const colorName = (key: string): RawMessage => tr(`craft.color.${stationColor(key) ?? 'white'}`);
 
 /** 16色の設定状況 */
 function colorList(player: Player): Promise<void> {
-  return present(player, tr('craft.admin.title'), (form, link) => {
-    form.label(tr('craft.admin.colors.body'));
-    for (const color of COLORS) {
-      const key = stationKey(color);
-      const station = getStation(key);
-      const label = station.name
-        ? text(colorName(key), ` - ${station.name} (${station.recipes.length})`)
-        : text(colorName(key), ` (${station.recipes.length})`);
-      form.button(
-        label,
-        link(() => stationSettings(player, key)),
-      );
-    }
+  const entries: Entry[] = COLORS.map((color) => {
+    const key = stationKey(color);
+    const station = getStation(key);
+    const count = ` (${station.recipes.length})`;
+    return {
+      button: station.name
+        ? twoLines(text(colorName(key), count), station.name)
+        : text(colorName(key), count),
+      next: () => stationSettings(player, key),
+    };
   });
+  return menu(player, tr('craft.admin.title'), entries, tr('craft.admin.colors.body'));
 }
 
 // --- 色の設定 ---
 
-/** 色の設定とレシピ一覧。設定は項目ごとのボタンの先で変える（1画面に詰め込まず、スクロールを減らす） */
+/** 色の設定とレシピ一覧。設定は項目ごとのボタンの先で変える */
 function stationSettings(player: Player, key: string): Promise<void> {
   const station = getStation(key);
   const self: Screen = () => stationSettings(player, key);
 
-  return present(player, text(tr('craft.admin.title'), ' - ', colorName(key)), (form, link) => {
-    form
-      .button(
-        text(tr('craft.admin.station.name'), '\n§7', station.name || colorName(key)),
-        link(() => stationName(player, key)),
-      )
-      .divider()
-      .header(tr('craft.admin.recipes'));
-
-    for (const recipe of station.recipes) {
+  return menu(player, text(tr('craft.admin.title'), ' - ', colorName(key)), [
+    {
+      button: twoLines(tr('craft.admin.station.name'), station.name || colorName(key)),
+      next: () => stationName(player, key),
+    },
+    'divider',
+    { header: tr('craft.admin.recipes') },
+    ...station.recipes.map((recipe) => ({
       // アイテムを読み込めなかったレシピは使えないので、印を付ける
-      const label = getRecipeItems(recipe.id) ? recipe.name : `§c${recipe.name} (!)`;
-      form.button(
-        label,
-        link(() => recipeDetail(player, key, recipe.id)),
-      );
-    }
-
-    form
-      .button(tr('craft.admin.recipes.add'), link(editThen(player, key, undefined, self)))
-      .divider()
-      .button(
-        tr('craft.admin.back'),
-        link(() => colorList(player)),
-      );
-  });
+      button: getRecipeItems(recipe.id) ? recipe.name : `§c${recipe.name} (!)`,
+      next: () => recipeDetail(player, key, recipe.id),
+    })),
+    { button: tr('craft.admin.recipes.add'), next: editThen(player, key, undefined, self) },
+    'divider',
+    { button: tr('craft.admin.back'), next: () => colorList(player) },
+  ]);
 }
 
-function stationName(player: Player, key: string): Promise<void> {
-  const name = new ObservableString(getStation(key).name, WRITABLE);
-  const back: Screen = () => stationSettings(player, key);
-
-  return present(player, tr('craft.admin.station.name'), (form, link) => {
-    const goBack = link(back);
-    form
-      .textField(tr('craft.admin.station.name'), name, {
-        description: tr('craft.admin.station.name.description'),
-      })
-      .divider()
-      .button(tr('craft.admin.save'), () => {
-        const station = getStation(key);
-        station.name = name.getData().trim().slice(0, MAX_NAME_LENGTH);
-        setStation(key, station);
-        goBack();
-      })
-      .button(tr('craft.admin.back'), goBack);
-  });
+async function stationName(player: Player, key: string): Promise<void> {
+  const form = new ModalFormData()
+    .title(tr('craft.admin.station.name'))
+    .textField(tr('craft.admin.station.name'), colorName(key), {
+      defaultValue: getStation(key).name,
+      tooltip: tr('craft.admin.station.name.description'),
+    })
+    .submitButton(tr('craft.admin.save'));
+  const values = (await ask(player, form))?.formValues;
+  if (values) {
+    const station = getStation(key);
+    station.name = String(values[0] ?? '')
+      .trim()
+      .slice(0, MAX_NAME_LENGTH);
+    setStation(key, station);
+  }
+  return stationSettings(player, key);
 }
 
 // --- レシピ ---
@@ -152,19 +162,19 @@ function stationName(player: Player, key: string): Promise<void> {
 const findMeta = (key: string, recipeId: string): RecipeMeta | undefined =>
   getStation(key).recipes.find((entry) => entry.id === recipeId);
 
-/** 一覧のボタンに添える、今の設定の要約 */
+/** 目次のボタンに添える、今の設定の要約 */
 function summaries(recipe: RecipeMeta) {
-  const join = (parts: (string | UIRawMessage)[]): UIRawMessage =>
+  const join = (parts: Message[]): RawMessage =>
     parts.length === 0
       ? NONE
       : text(...parts.flatMap((part, i) => (i > 0 ? [', ', part] : [part])));
 
-  const cost: (string | UIRawMessage)[] = [];
+  const cost: Message[] = [];
   if (recipe.levels > 0) cost.push(tr('craft.admin.summary.levels', String(recipe.levels)));
   if (recipe.scoreObjective && recipe.scoreAmount > 0) {
     cost.push(`${recipe.scoreObjective} ${recipe.scoreAmount}`);
   }
-  const conditions: (string | UIRawMessage)[] = [];
+  const conditions: Message[] = [];
   if (recipe.tag) conditions.push(tr('craft.admin.summary.tag', recipe.tag));
   if (recipe.once) conditions.push(tr('craft.admin.recipe.once'));
   const command = recipe.command.length > 40 ? `${recipe.command.slice(0, 40)}…` : recipe.command;
@@ -186,171 +196,154 @@ function recipeDetail(player: Player, key: string, recipeId: string): Promise<vo
   const recipe = findMeta(key, recipeId);
   if (!recipe) return stationSettings(player, key);
 
-  const self: Screen = () => recipeDetail(player, key, recipeId);
   const summary = summaries(recipe);
   const section = (
-    label: UIRawMessage,
-    value: string | UIRawMessage,
+    label: Message,
+    value: Message,
     screen: (player: Player, key: string, recipeId: string) => Promise<void>,
-    link: Link,
-  ): [UIRawMessage, () => void] => [
-    text(label, '\n§7', value),
-    link(() => screen(player, key, recipeId)),
-  ];
+  ): Entry => ({ button: twoLines(label, value), next: () => screen(player, key, recipeId) });
 
-  return present(
-    player,
-    text(tr('craft.admin.recipe.title'), ` - ${recipe.name}`),
-    (form, link) => {
-      form
-        .button(...section(tr('craft.admin.recipe.basics'), summary.basics, recipeBasics, link))
-        .button(...section(tr('craft.admin.recipe.cost'), summary.cost, recipeCost, link))
-        .button(
-          ...section(
-            tr('craft.admin.recipe.conditions'),
-            summary.conditions,
-            recipeConditions,
-            link,
-          ),
-        )
-        .button(...section(tr('craft.admin.recipe.reward'), summary.reward, recipeReward, link))
-        .button(tr('craft.admin.recipe.edit'), link(editThen(player, key, recipeId, self)))
-        .divider()
-        .button(
-          tr('craft.admin.recipe.delete'),
-          link(() => confirmDelete(player, key, recipeId, recipe.name)),
-        )
-        .button(
-          tr('craft.admin.back'),
-          link(() => stationSettings(player, key)),
-        );
+  return menu(player, text(tr('craft.admin.recipe.title'), ` - ${recipe.name}`), [
+    section(tr('craft.admin.recipe.basics'), summary.basics, recipeBasics),
+    section(tr('craft.admin.recipe.cost'), summary.cost, recipeCost),
+    section(tr('craft.admin.recipe.conditions'), summary.conditions, recipeConditions),
+    section(tr('craft.admin.recipe.reward'), summary.reward, recipeReward),
+    {
+      button: tr('craft.admin.recipe.edit'),
+      next: editThen(player, key, recipeId, () => recipeDetail(player, key, recipeId)),
     },
-  );
+    'divider',
+    {
+      button: tr('craft.admin.recipe.delete'),
+      next: () => confirmDelete(player, key, recipeId, recipe.name),
+    },
+    { button: tr('craft.admin.back'), next: () => stationSettings(player, key) },
+  ]);
 }
+
+type FormValues = readonly (boolean | number | string | undefined)[];
 
 /**
  * レシピの設定を1項目ぶん編集するフォーム。
- * `build` は入力欄を並べ、保存するときに入力をレシピへ書き込む関数を返す。保存しても戻ってもレシピの詳細へ戻る
+ * `build` は入力欄を並べ（入力欄だけにする。見出しなどを挟むと formValues の番号がずれうる）、
+ * 送信された値をレシピへ書き込む関数を返す。送信しても閉じてもレシピの詳細へ戻る
  */
-function recipeSection(
+async function recipeSection(
   player: Player,
   key: string,
   recipeId: string,
-  title: UIRawMessage,
-  build: (form: CustomForm, recipe: RecipeMeta) => (target: RecipeMeta) => void,
+  title: RawMessage,
+  build: (
+    form: ModalFormData,
+    recipe: RecipeMeta,
+  ) => (values: FormValues, target: RecipeMeta) => void,
 ): Promise<void> {
   const recipe = findMeta(key, recipeId);
   if (!recipe) return stationSettings(player, key);
 
-  return present(player, text(title, ` - ${recipe.name}`), (form, link) => {
-    const apply = build(form, recipe);
-    const goBack = link(() => recipeDetail(player, key, recipeId));
-    form
-      .divider()
-      .button(tr('craft.admin.save'), () => {
-        const station = getStation(key);
-        const target = station.recipes.find((entry) => entry.id === recipeId);
-        if (target) {
-          apply(target);
-          setStation(key, station);
-        }
-        goBack();
-      })
-      .button(tr('craft.admin.back'), goBack);
-  });
+  const form = new ModalFormData().title(text(title, ` - ${recipe.name}`));
+  const apply = build(form, recipe);
+  form.submitButton(tr('craft.admin.save'));
+
+  const values = (await ask(player, form))?.formValues;
+  if (values) {
+    const station = getStation(key);
+    const target = station.recipes.find((entry) => entry.id === recipeId);
+    if (target) {
+      apply(values, target);
+      setStation(key, station);
+    }
+  }
+  return recipeDetail(player, key, recipeId);
 }
+
+const asString = (value: FormValues[number]): string => (typeof value === 'string' ? value : '');
+const asIndex = (value: FormValues[number]): number => (typeof value === 'number' ? value : -1);
 
 const recipeBasics = (player: Player, key: string, recipeId: string) =>
   recipeSection(player, key, recipeId, tr('craft.admin.recipe.basics'), (form, recipe) => {
-    const name = new ObservableString(recipe.name, WRITABLE);
-    const shape = new ObservableNumber(RECIPE_SHAPES.indexOf(recipe.shape), WRITABLE);
-    const match = new ObservableNumber(MATCH_MODES.indexOf(recipe.match), WRITABLE);
     form
-      .textField(tr('craft.admin.recipe.name'), name)
+      .textField(tr('craft.admin.recipe.name'), recipe.name, { defaultValue: recipe.name })
       .dropdown(
         tr('craft.admin.recipe.shape'),
-        shape,
-        RECIPE_SHAPES.map((value, index) => ({
-          label: tr(`craft.admin.recipe.shape.${value}`),
-          value: index,
-        })),
+        RECIPE_SHAPES.map((value) => tr(`craft.admin.recipe.shape.${value}`)),
+        { defaultValueIndex: RECIPE_SHAPES.indexOf(recipe.shape) },
       )
       .dropdown(
         tr('craft.admin.recipe.match'),
-        match,
-        MATCH_MODES.map((value, index) => ({
-          label: tr(`craft.admin.recipe.match.${value}`),
-          value: index,
-        })),
-        { description: tr('craft.admin.recipe.match.description') },
+        MATCH_MODES.map((value) => tr(`craft.admin.recipe.match.${value}`)),
+        {
+          defaultValueIndex: MATCH_MODES.indexOf(recipe.match),
+          tooltip: tr('craft.admin.recipe.match.description'),
+        },
       );
-    return (target) => {
-      target.name = name.getData().trim().slice(0, MAX_NAME_LENGTH) || target.name;
-      target.shape = RECIPE_SHAPES[shape.getData()] ?? target.shape;
-      target.match = MATCH_MODES[match.getData()] ?? target.match;
+    return ([name, shape, match], target) => {
+      target.name = asString(name).trim().slice(0, MAX_NAME_LENGTH) || target.name;
+      target.shape = RECIPE_SHAPES[asIndex(shape)] ?? target.shape;
+      target.match = MATCH_MODES[asIndex(match)] ?? target.match;
     };
   });
 
 const recipeCost = (player: Player, key: string, recipeId: string) =>
   recipeSection(player, key, recipeId, tr('craft.admin.recipe.cost'), (form, recipe) => {
-    const levels = new ObservableString(String(recipe.levels), WRITABLE);
-    const objective = new ObservableString(recipe.scoreObjective, WRITABLE);
-    const amount = new ObservableString(String(recipe.scoreAmount), WRITABLE);
     form
-      .textField(tr('craft.admin.recipe.levels'), levels)
-      .textField(tr('craft.admin.recipe.score'), objective)
-      .textField(tr('craft.admin.recipe.score.amount'), amount);
-    return (target) => {
-      target.levels = toCount(levels.getData());
-      target.scoreObjective = objective.getData().trim();
-      target.scoreAmount = toCount(amount.getData());
+      .textField(tr('craft.admin.recipe.levels'), '0', { defaultValue: String(recipe.levels) })
+      .textField(tr('craft.admin.recipe.score'), 'money', { defaultValue: recipe.scoreObjective })
+      .textField(tr('craft.admin.recipe.score.amount'), '0', {
+        defaultValue: String(recipe.scoreAmount),
+      });
+    return ([levels, objective, amount], target) => {
+      target.levels = toCount(levels);
+      target.scoreObjective = asString(objective).trim();
+      target.scoreAmount = toCount(amount);
     };
   });
 
 const recipeConditions = (player: Player, key: string, recipeId: string) =>
   recipeSection(player, key, recipeId, tr('craft.admin.recipe.conditions'), (form, recipe) => {
-    const tag = new ObservableString(recipe.tag, WRITABLE);
-    const once = new ObservableBoolean(recipe.once, WRITABLE);
-    form.textField(tr('craft.admin.recipe.tag'), tag).toggle(tr('craft.admin.recipe.once'), once);
-    return (target) => {
-      target.tag = tag.getData().trim();
-      target.once = once.getData();
+    form
+      .textField(tr('craft.admin.recipe.tag'), 'quest_2_clear', { defaultValue: recipe.tag })
+      .toggle(tr('craft.admin.recipe.once'), { defaultValue: recipe.once });
+    return ([tag, once], target) => {
+      target.tag = asString(tag).trim();
+      target.once = once === true;
     };
   });
 
 const recipeReward = (player: Player, key: string, recipeId: string) =>
   recipeSection(player, key, recipeId, tr('craft.admin.recipe.reward'), (form, recipe) => {
-    const command = new ObservableString(recipe.command, WRITABLE);
-    form.textField(tr('craft.admin.recipe.command'), command, {
-      description: tr('craft.admin.recipe.command.description'),
+    form.textField(tr('craft.admin.recipe.command'), 'function quest/stage3', {
+      defaultValue: recipe.command,
+      tooltip: tr('craft.admin.recipe.command.description'),
     });
-    return (target) => {
-      target.command = command.getData().trim();
+    return ([command], target) => {
+      target.command = asString(command).trim();
     };
   });
 
-async function confirmDelete(
+/** 削除の確認。ボタンの番号が分かりやすいよう、MessageForm ではなく ActionForm にする */
+function confirmDelete(
   player: Player,
   key: string,
   recipeId: string,
   recipeName: string,
 ): Promise<void> {
-  for (let attempt = 0; attempt < MAX_RETRIES && player.isValid; attempt++) {
-    const result = await new MessageBox(player, tr('craft.admin.recipe.delete'))
-      .body(tr('craft.admin.recipe.delete.confirm', recipeName))
-      .button1(tr('craft.admin.recipe.delete'))
-      .button2(tr('craft.admin.cancel'))
-      .show();
-    if (result.closeReason === DataDrivenScreenClosedReason.UserBusy) {
-      await system.waitTicks(RETRY_TICKS);
-      continue;
-    }
-
-    if (result.selection !== 0) return recipeDetail(player, key, recipeId);
-    const station = getStation(key);
-    station.recipes = station.recipes.filter((entry) => entry.id !== recipeId);
-    setStation(key, station);
-    deleteRecipeItems(recipeId);
-    return stationSettings(player, key);
-  }
+  return menu(
+    player,
+    tr('craft.admin.recipe.delete'),
+    [
+      {
+        button: text('§c', tr('craft.admin.recipe.delete')),
+        next: () => {
+          const station = getStation(key);
+          station.recipes = station.recipes.filter((entry) => entry.id !== recipeId);
+          setStation(key, station);
+          deleteRecipeItems(recipeId);
+          return stationSettings(player, key);
+        },
+      },
+      { button: tr('craft.admin.cancel'), next: () => recipeDetail(player, key, recipeId) },
+    ],
+    tr('craft.admin.recipe.delete.confirm', recipeName),
+  );
 }
