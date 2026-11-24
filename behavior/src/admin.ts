@@ -1,106 +1,34 @@
 // 管理画面（ActionForm / ModalForm）。docs/06-admin-ui.md
 //   色一覧 → 色の設定（表示名・レシピ一覧）→ レシピの詳細 → 項目ごとの設定 / 実物エディタ
 // 一覧と目次は ActionForm（ボタンに改行と色コードが使える）、入力は ModalForm にする
-import { type Player, type RawMessage, system } from '@minecraft/server';
-import {
-  ActionFormData,
-  FormCancelationReason,
-  type FormResponse,
-  MessageFormData,
-  ModalFormData,
-} from '@minecraft/server-ui';
+import { type Player, type RawMessage } from '@minecraft/server';
+import { MessageFormData, ModalFormData } from '@minecraft/server-ui';
 import { type Color, COLORS, stationColor, stationKey } from './constants';
 import { openEditor } from './editor';
+import {
+  ask,
+  type Entry,
+  ICON,
+  menu,
+  type Message,
+  run,
+  type Screen,
+  text,
+  twoLines,
+} from './forms';
 import { GRID_SIZES } from './layout';
 import { MATCH_MODES, RECIPE_SHAPES, type RecipeMeta, toCount, trimGrid } from './recipe';
+import { storageMenu } from './storage-admin';
 import { deleteRecipeItems, ensureLoaded, getRecipeItems, getStation, setStation } from './store';
 import { tr } from './util';
 
-const MAX_RETRIES = 20;
-const RETRY_TICKS = 5;
 /** コンテナのタイトルは 256 バイトまで。日本語（1文字3バイト）でも収まる長さにする */
 const MAX_NAME_LENGTH = 60;
 const NONE = tr('craft.admin.summary.none');
 
-type Message = string | RawMessage;
-
-const text = (...parts: Message[]): RawMessage => ({
-  rawtext: parts.map((part) => (typeof part === 'string' ? { text: part } : part)),
-});
-
-/** ボタンのラベル。2行目に今の設定などを灰色で添える */
-const twoLines = (label: Message, detail: Message): RawMessage => text(label, '\n§8', detail);
-
-type Screen = () => Promise<void>;
-
-/**
- * フォームを表示する。ほかの画面が開いていて表示できなかった（UserBusy）ときは、少し待ってやり直す。
- * 閉じられたら undefined
- */
-async function ask<R extends FormResponse>(
-  player: Player,
-  form: { show(player: Player): Promise<R> },
-): Promise<R | undefined> {
-  for (let attempt = 0; attempt < MAX_RETRIES && player.isValid; attempt++) {
-    const response = await form.show(player);
-    if (response.cancelationReason === FormCancelationReason.UserBusy) {
-      await system.waitTicks(RETRY_TICKS);
-      continue;
-    }
-    return response.canceled ? undefined : response;
-  }
-  return undefined;
-}
-
-/** ボタンのアイコン（バニラのテクスチャ） */
-const ICON = {
-  name: 'textures/items/name_tag',
-  gridSize: 'textures/blocks/crafting_table_top',
-  recipe: 'textures/items/paper',
-  add: 'textures/items/book_writable',
-  back: 'textures/items/arrow',
-  basics: 'textures/items/sign',
-  cost: 'textures/items/experience_bottle',
-  conditions: 'textures/blocks/barrier',
-  reward: 'textures/items/nether_star',
-  edit: 'textures/blocks/crafting_table_front',
-  delete: 'textures/blocks/tnt_side',
-} as const;
-
 /** 色の羊毛。ライトグレーだけテクスチャ名が silver */
 const woolIcon = (color: Color): string =>
   `textures/blocks/wool_colored_${color === 'light_gray' ? 'silver' : color}`;
-
-/** ActionForm の1行。ボタンか、区切り・ラベル（header は文字が大きすぎるので使わない） */
-type Entry = { button: Message; icon?: string; next: Screen } | { label: Message } | 'divider';
-
-/** ボタンの一覧を表示し、押されたボタンの画面を開く。閉じられたら何もしない */
-async function menu(
-  player: Player,
-  title: Message,
-  entries: Entry[],
-  body?: Message,
-): Promise<void> {
-  const form = new ActionFormData().title(title);
-  if (body !== undefined) form.body(body);
-  const screens: Screen[] = [];
-  for (const entry of entries) {
-    if (entry === 'divider') form.divider();
-    else if ('label' in entry) form.label(entry.label);
-    else {
-      form.button(entry.button, entry.icon);
-      screens.push(entry.next);
-    }
-  }
-  const response = await ask(player, form);
-  // selection はボタンだけを数えた番号
-  const next = response?.selection === undefined ? undefined : screens[response.selection];
-  return next?.();
-}
-
-const run = (screen: Promise<void>): void => {
-  screen.catch((error: unknown) => console.warn(`[custom-crafting] admin form: ${String(error)}`));
-};
 
 /** 実物エディタを開き、閉じたら `back` に進む。`back` には保存したレシピの ID（保存しなかったら undefined）を渡す */
 const editThen =
@@ -136,6 +64,11 @@ function colorList(player: Player): Promise<void> {
       icon: woolIcon(color),
       next: () => stationSettings(player, key),
     };
+  });
+  entries.push('divider', {
+    button: tr('craft.admin.storage'),
+    icon: ICON.storage,
+    next: () => storageMenu(player, () => colorList(player)),
   });
   return menu(player, tr('craft.admin.title'), entries, tr('craft.admin.colors.body'));
 }

@@ -27,10 +27,12 @@ export interface StationConfig {
 const emptyStation = (): StationConfig => ({ name: '', gridSize: DEFAULT_GRID_SIZE, recipes: [] });
 
 const stationProperty = (key: string) => `${NAMESPACE}:station.${key}`;
-const recipeStructure = (id: string) => `${NAMESPACE}:r_${id}`;
+const RECIPE_PREFIX = `${NAMESPACE}:r_`;
+const STASH_PREFIX = `${NAMESPACE}:p_`;
+const recipeStructure = (id: string) => `${RECIPE_PREFIX}${id}`;
 // プレイヤー ID は負の数になることがあり、`-` は識別子に使えない
-const stashStructure = (playerId: string) =>
-  `${NAMESPACE}:p_${playerId.replace(/[^0-9a-z]/gi, 'n')}`;
+export const stashStructure = (playerId: string) =>
+  `${STASH_PREFIX}${playerId.replace(/[^0-9a-z]/gi, 'n')}`;
 
 // --- 色ごとの設定 ---
 
@@ -53,6 +55,15 @@ export function getStation(key: string): StationConfig {
 
 export function setStation(key: string, config: StationConfig): void {
   world.setDynamicProperty(stationProperty(key), JSON.stringify(config));
+}
+
+/** 設定が保存されている色のキー */
+function stationKeys(): string[] {
+  const prefix = stationProperty('');
+  return world
+    .getDynamicPropertyIds()
+    .filter((id) => id.startsWith(prefix))
+    .map((id) => id.slice(prefix.length));
 }
 
 // --- 保管用エンティティ ---
@@ -169,13 +180,7 @@ interface RecipeItems {
 const cache = new Map<string, RecipeItems>();
 let loading: Promise<void> | undefined;
 
-function allRecipes(): RecipeMeta[] {
-  const prefix = stationProperty('');
-  return world
-    .getDynamicPropertyIds()
-    .filter((id) => id.startsWith(prefix))
-    .flatMap((id) => getStation(id.slice(prefix.length)).recipes);
-}
+const allRecipes = (): RecipeMeta[] => stationKeys().flatMap((key) => getStation(key).recipes);
 
 async function load(player: Player): Promise<void> {
   const missing = allRecipes().filter((recipe) => !cache.has(recipe.id));
@@ -288,3 +293,71 @@ export async function restoreStash(player: Player): Promise<number> {
   for (const item of items) giveOrDrop(player, item);
   return items.length;
 }
+
+// --- ストレージの管理 ---
+
+export interface StorageReport {
+  /** 設定が保存されている色の数 */
+  stations: number;
+  /** レシピの数 */
+  recipes: number;
+  /** アイテムを読み込めなかったレシピ */
+  broken: { key: string; recipe: RecipeMeta }[];
+  /** レシピのストラクチャーの数 */
+  recipeStructures: number;
+  /** どのレシピにも使われていないレシピのストラクチャー（レシピを消すのに失敗した残りなど） */
+  orphans: string[];
+  /** 作業台の中身の退避のストラクチャー */
+  stashes: string[];
+  /** ワールドのダイナミックプロパティの合計バイト数 */
+  propertyBytes: number;
+}
+
+/** 保存しているデータを集計する。アイテムの読み込み（ensureLoaded）が終わってから呼ぶ */
+export function storageReport(): StorageReport {
+  const keys = stationKeys();
+  const metas = keys.flatMap((key) => getStation(key).recipes.map((recipe) => ({ key, recipe })));
+  const used = new Set(metas.map(({ recipe }) => recipeStructure(recipe.id)));
+  const structures = world.structureManager.getWorldStructureIds();
+  const recipeStructures = structures.filter((id) => id.startsWith(RECIPE_PREFIX));
+
+  return {
+    stations: keys.filter((key) => getStation(key).recipes.length > 0).length,
+    recipes: metas.length,
+    broken: metas.filter(({ recipe }) => !cache.has(recipe.id)),
+    recipeStructures: recipeStructures.length,
+    orphans: recipeStructures.filter((id) => !used.has(id)),
+    stashes: structures.filter((id) => id.startsWith(STASH_PREFIX)),
+    propertyBytes: world.getDynamicPropertyTotalByteCount(),
+  };
+}
+
+/** 使われていないデータを消す。消した数を返す */
+export function cleanUpStorage(options: { orphans: boolean; broken: boolean }): {
+  structures: number;
+  recipes: number;
+} {
+  const report = storageReport();
+  let structures = 0;
+  let recipes = 0;
+
+  if (options.orphans) {
+    for (const id of report.orphans) {
+      if (world.structureManager.delete(id)) structures++;
+    }
+  }
+  if (options.broken) {
+    for (const { key, recipe } of report.broken) {
+      const station = getStation(key);
+      station.recipes = station.recipes.filter((entry) => entry.id !== recipe.id);
+      setStation(key, station);
+      if (world.structureManager.delete(recipeStructure(recipe.id))) structures++;
+      recipes++;
+    }
+  }
+  return { structures, recipes };
+}
+
+/** 退避のストラクチャーを消す（中のアイテムは返さない） */
+export const deleteStash = (structureId: string): boolean =>
+  structureId.startsWith(STASH_PREFIX) && world.structureManager.delete(structureId);
