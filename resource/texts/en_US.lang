@@ -1,7 +1,6 @@
 ## Custom Crafting add-on
 
 craft:itemGroup.name.workbench=Custom Workbenches
-craft.ui.blank=§r
 craft.editor.title=Edit Recipe (close to save)
 
 craft.cmd.open.description=Opens the custom workbench of the given color
@@ -40,6 +39,7 @@ craft.admin.recipe.delete=Delete this recipe
 craft.admin.recipe.delete.confirm=Delete recipe "%s"? This cannot be undone.
 
 ## generated:start (tools/gen-assets.ts)
+craft.ui.blank=§c§r§a§f§t
 tile.craft:workbench_white.name=White Custom Workbench
 craft.station.table_white=White Custom Workbench
 craft.color.white=White

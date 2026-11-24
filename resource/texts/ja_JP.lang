@@ -1,7 +1,6 @@
 ## カスタム作業台アドオン
 
 craft:itemGroup.name.workbench=カスタム作業台
-craft.ui.blank=§r
 craft.editor.title=レシピの編集（閉じると保存）
 
 craft.cmd.open.description=指定した色のカスタム作業台を開く
@@ -40,6 +39,7 @@ craft.admin.recipe.delete=このレシピを削除
 craft.admin.recipe.delete.confirm=レシピ「%s」を削除します。元に戻せません。
 
 ## generated:start (tools/gen-assets.ts)
+craft.ui.blank=§c§r§a§f§t
 tile.craft:workbench_white.name=白色のカスタム作業台
 craft.station.table_white=白色のカスタム作業台
 craft.color.white=白色

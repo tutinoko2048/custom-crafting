@@ -2,6 +2,12 @@
   "resource_pack_name": "custom-crafting",
   "texture_name": "atlas.terrain",
   "texture_data": {
+    "craft:ui_filler": {
+      "textures": "textures/craft/blocks/ui_filler"
+    },
+    "craft:ui_arrow": {
+      "textures": "textures/craft/blocks/ui_arrow"
+    },
     "craft:workbench_bottom": {
       "textures": "textures/craft/blocks/workbench_bottom"
     },

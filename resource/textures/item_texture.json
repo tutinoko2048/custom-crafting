@@ -1,8 +1,0 @@
-{
-  "resource_pack_name": "custom-crafting",
-  "texture_name": "atlas.items",
-  "texture_data": {
-    "craft:ui_filler": { "textures": "textures/craft/items/ui_filler" },
-    "craft:ui_arrow": { "textures": "textures/craft/items/ui_arrow" }
-  }
-}

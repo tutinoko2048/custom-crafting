@@ -1,7 +1,7 @@
 // クラフト画面（チェスト画面・1行9マス×3行）のスロット割り当て。docs/04-crafting-screen.md
 //
 //  ■  [ ][ ][ ]  ■  ■  ■  ■  ■
-//  ■  [ ][ ][ ]  ■  →  [完成] ■  ■
+//  ■  [ ][ ][ ]  ■  →  ■  [完成] ■
 //  ■  [ ][ ][ ]  ■  ■  ■  ■  ■
 
 export const GRID_SIZE = 3;
@@ -17,7 +17,7 @@ export const GRID_SLOTS: readonly number[] = Array.from(
 );
 
 export const ARROW_SLOT = 14;
-export const RESULT_SLOT = 15;
+export const RESULT_SLOT = 16;
 
 /** 穴埋め用アイテムを置くスロット */
 export const FILLER_SLOTS: readonly number[] = Array.from(

@@ -1,0 +1,18 @@
+{
+  "namespace": "common",
+  "highlight_slot_panel/highlight/hover_text": {
+    "modifications": [
+      {
+        "array_name": "bindings",
+        "operation": "insert_back",
+        "value": [
+          {
+            "binding_type": "view",
+            "source_property_name": "((#hover_text - '§c§r§a§f§t') = #hover_text)",
+            "target_property_name": "#visible"
+          }
+        ]
+      }
+    ]
+  }
+}
