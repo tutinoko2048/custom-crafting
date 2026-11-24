@@ -6,6 +6,7 @@ import {
   ActionFormData,
   FormCancelationReason,
   type FormResponse,
+  MessageFormData,
   ModalFormData,
 } from '@minecraft/server-ui';
 import { type Color, COLORS, stationColor, stationKey } from './constants';
@@ -354,34 +355,25 @@ const recipeReward = (player: Player, key: string, recipeId: string) =>
     };
   });
 
-/** 削除の確認。ボタンの番号が分かりやすいよう、MessageForm ではなく ActionForm にする */
-function confirmDelete(
+/** 削除の確認。button1（selection 0）を削除、button2 をキャンセルにする */
+async function confirmDelete(
   player: Player,
   key: string,
   recipeId: string,
   recipeName: string,
 ): Promise<void> {
-  return menu(
-    player,
-    tr('craft.admin.recipe.delete'),
-    [
-      {
-        button: text('§c', tr('craft.admin.recipe.delete')),
-        icon: ICON.delete,
-        next: () => {
-          const station = getStation(key);
-          station.recipes = station.recipes.filter((entry) => entry.id !== recipeId);
-          setStation(key, station);
-          deleteRecipeItems(recipeId);
-          return stationSettings(player, key);
-        },
-      },
-      {
-        button: tr('craft.admin.cancel'),
-        icon: ICON.back,
-        next: () => recipeDetail(player, key, recipeId),
-      },
-    ],
-    tr('craft.admin.recipe.delete.confirm', recipeName),
-  );
+  const form = new MessageFormData()
+    .title(tr('craft.admin.recipe.delete'))
+    .body(tr('craft.admin.recipe.delete.confirm', recipeName))
+    .button1(text('§c', tr('craft.admin.recipe.delete')))
+    .button2(tr('craft.admin.cancel'));
+  const response = await ask(player, form);
+  // 閉じられたときやキャンセルは消さずに詳細へ戻る
+  if (response?.selection !== 0) return recipeDetail(player, key, recipeId);
+
+  const station = getStation(key);
+  station.recipes = station.recipes.filter((entry) => entry.id !== recipeId);
+  setStation(key, station);
+  deleteRecipeItems(recipeId);
+  return stationSettings(player, key);
 }
