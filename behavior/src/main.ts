@@ -94,7 +94,9 @@ system.beforeEvents.startup.subscribe(({ blockComponentRegistry, customCommandRe
     {
       name: `${NAMESPACE}:admin`,
       description: 'craft.cmd.admin.description' satisfies LangKey,
-      permissionLevel: CommandPermissionLevel.Admin,
+      // Admin はBDSではサーバーコンソールしか持たず、OP でも実行できないので GameDirectors にする。
+      // コマンドブロックからも呼べるが、callback 側でプレイヤー以外を弾く
+      permissionLevel: CommandPermissionLevel.GameDirectors,
       cheatsRequired: false,
       optionalParameters: [
         { name: 'color', type: CustomCommandParamType.Enum, enumName: COLOR_ENUM },
