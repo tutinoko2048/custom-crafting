@@ -8,7 +8,7 @@ import {
   type FormResponse,
   ModalFormData,
 } from '@minecraft/server-ui';
-import { COLORS, stationColor, stationKey } from './constants';
+import { type Color, COLORS, stationColor, stationKey } from './constants';
 import { openEditor } from './editor';
 import { MATCH_MODES, RECIPE_SHAPES, type RecipeMeta, toCount } from './recipe';
 import { deleteRecipeItems, ensureLoaded, getRecipeItems, getStation, setStation } from './store';
@@ -50,8 +50,26 @@ async function ask<R extends FormResponse>(
   return undefined;
 }
 
+/** ボタンのアイコン（バニラのテクスチャ） */
+const ICON = {
+  name: 'textures/items/name_tag',
+  recipe: 'textures/items/paper',
+  add: 'textures/items/book_writable',
+  back: 'textures/items/arrow',
+  basics: 'textures/items/sign',
+  cost: 'textures/items/experience_bottle',
+  conditions: 'textures/blocks/barrier',
+  reward: 'textures/items/nether_star',
+  edit: 'textures/blocks/crafting_table_front',
+  delete: 'textures/blocks/tnt_side',
+} as const;
+
+/** 色の羊毛。ライトグレーだけテクスチャ名が silver */
+const woolIcon = (color: Color): string =>
+  `textures/blocks/wool_colored_${color === 'light_gray' ? 'silver' : color}`;
+
 /** ActionForm の1行。ボタンか、区切り・見出し */
-type Entry = { button: Message; next: Screen } | { header: Message } | 'divider';
+type Entry = { button: Message; icon?: string; next: Screen } | { header: Message } | 'divider';
 
 /** ボタンの一覧を表示し、押されたボタンの画面を開く。閉じられたら何もしない */
 async function menu(
@@ -67,7 +85,7 @@ async function menu(
     if (entry === 'divider') form.divider();
     else if ('header' in entry) form.header(entry.header);
     else {
-      form.button(entry.button);
+      form.button(entry.button, entry.icon);
       screens.push(entry.next);
     }
   }
@@ -107,6 +125,7 @@ function colorList(player: Player): Promise<void> {
       button: station.name
         ? twoLines(text(colorName(key), count), station.name)
         : text(colorName(key), count),
+      icon: woolIcon(color),
       next: () => stationSettings(player, key),
     };
   });
@@ -123,6 +142,7 @@ function stationSettings(player: Player, key: string): Promise<void> {
   return menu(player, text(tr('craft.admin.title'), ' - ', colorName(key)), [
     {
       button: twoLines(tr('craft.admin.station.name'), station.name || colorName(key)),
+      icon: ICON.name,
       next: () => stationName(player, key),
     },
     'divider',
@@ -130,11 +150,16 @@ function stationSettings(player: Player, key: string): Promise<void> {
     ...station.recipes.map((recipe) => ({
       // アイテムを読み込めなかったレシピは使えないので、印を付ける
       button: getRecipeItems(recipe.id) ? recipe.name : `§c${recipe.name} (!)`,
+      icon: ICON.recipe,
       next: () => recipeDetail(player, key, recipe.id),
     })),
-    { button: tr('craft.admin.recipes.add'), next: editThen(player, key, undefined, self) },
+    {
+      button: tr('craft.admin.recipes.add'),
+      icon: ICON.add,
+      next: editThen(player, key, undefined, self),
+    },
     'divider',
-    { button: tr('craft.admin.back'), next: () => colorList(player) },
+    { button: tr('craft.admin.back'), icon: ICON.back, next: () => colorList(player) },
   ]);
 }
 
@@ -200,24 +225,32 @@ function recipeDetail(player: Player, key: string, recipeId: string): Promise<vo
   const section = (
     label: Message,
     value: Message,
+    icon: string,
     screen: (player: Player, key: string, recipeId: string) => Promise<void>,
-  ): Entry => ({ button: twoLines(label, value), next: () => screen(player, key, recipeId) });
+  ): Entry => ({ button: twoLines(label, value), icon, next: () => screen(player, key, recipeId) });
 
   return menu(player, text(tr('craft.admin.recipe.title'), ` - ${recipe.name}`), [
-    section(tr('craft.admin.recipe.basics'), summary.basics, recipeBasics),
-    section(tr('craft.admin.recipe.cost'), summary.cost, recipeCost),
-    section(tr('craft.admin.recipe.conditions'), summary.conditions, recipeConditions),
-    section(tr('craft.admin.recipe.reward'), summary.reward, recipeReward),
+    section(tr('craft.admin.recipe.basics'), summary.basics, ICON.basics, recipeBasics),
+    section(tr('craft.admin.recipe.cost'), summary.cost, ICON.cost, recipeCost),
+    section(
+      tr('craft.admin.recipe.conditions'),
+      summary.conditions,
+      ICON.conditions,
+      recipeConditions,
+    ),
+    section(tr('craft.admin.recipe.reward'), summary.reward, ICON.reward, recipeReward),
     {
       button: tr('craft.admin.recipe.edit'),
+      icon: ICON.edit,
       next: editThen(player, key, recipeId, () => recipeDetail(player, key, recipeId)),
     },
     'divider',
     {
       button: tr('craft.admin.recipe.delete'),
+      icon: ICON.delete,
       next: () => confirmDelete(player, key, recipeId, recipe.name),
     },
-    { button: tr('craft.admin.back'), next: () => stationSettings(player, key) },
+    { button: tr('craft.admin.back'), icon: ICON.back, next: () => stationSettings(player, key) },
   ]);
 }
 
@@ -334,6 +367,7 @@ function confirmDelete(
     [
       {
         button: text('§c', tr('craft.admin.recipe.delete')),
+        icon: ICON.delete,
         next: () => {
           const station = getStation(key);
           station.recipes = station.recipes.filter((entry) => entry.id !== recipeId);
@@ -342,7 +376,11 @@ function confirmDelete(
           return stationSettings(player, key);
         },
       },
-      { button: tr('craft.admin.cancel'), next: () => recipeDetail(player, key, recipeId) },
+      {
+        button: tr('craft.admin.cancel'),
+        icon: ICON.back,
+        next: () => recipeDetail(player, key, recipeId),
+      },
     ],
     tr('craft.admin.recipe.delete.confirm', recipeName),
   );
