@@ -10,14 +10,16 @@ import { type LangKey, tr } from './util';
 /**
  * エディタを開き、閉じて保存し終わったら解決する（その後に管理画面へ戻る）。
  * @param recipeId 編集するレシピ。省略すると新しいレシピを作る
+ * @returns 保存したレシピの ID。保存しなかった・できなかったときは undefined
  */
 export async function openEditor(
   player: Player,
   key: string,
   recipeId: string | undefined,
-): Promise<void> {
+): Promise<string | undefined> {
   const existing = recipeId === undefined ? undefined : getRecipeItems(recipeId);
 
+  let saved: string | undefined;
   const screen = ContainerScreen.open(player, {
     title: 'craft.editor.title' satisfies LangKey,
     layout: CRAFTING_LAYOUT,
@@ -47,6 +49,7 @@ export async function openEditor(
               station.recipes.push(meta);
               setStation(key, station);
             }
+            saved = id;
             player.sendMessage(tr('craft.msg.saved', meta.name));
           } catch (error) {
             console.warn(`[custom-crafting] failed to save recipe: ${String(error)}`);
@@ -64,4 +67,5 @@ export async function openEditor(
     },
   });
   await screen?.closed;
+  return saved;
 }

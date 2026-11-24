@@ -100,9 +100,14 @@ const run = (screen: Promise<void>): void => {
   screen.catch((error: unknown) => console.warn(`[custom-crafting] admin form: ${String(error)}`));
 };
 
-/** 実物エディタを開き、閉じたら `back` に戻る */
+/** 実物エディタを開き、閉じたら `back` に進む。`back` には保存したレシピの ID（保存しなかったら undefined）を渡す */
 const editThen =
-  (player: Player, key: string, recipeId: string | undefined, back: Screen): Screen =>
+  (
+    player: Player,
+    key: string,
+    recipeId: string | undefined,
+    back: (saved: string | undefined) => Promise<void>,
+  ): Screen =>
   () =>
     openEditor(player, key, recipeId).then(back);
 
@@ -157,7 +162,10 @@ function stationSettings(player: Player, key: string): Promise<void> {
     {
       button: tr('craft.admin.recipes.add'),
       icon: ICON.add,
-      next: editThen(player, key, undefined, self),
+      // 登録できたら、そのままそのレシピの設定へ進む
+      next: editThen(player, key, undefined, (saved) =>
+        saved === undefined ? self() : recipeDetail(player, key, saved),
+      ),
     },
     'divider',
     { button: tr('craft.admin.back'), icon: ICON.back, next: () => colorList(player) },
